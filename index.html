@@ -5,315 +5,514 @@
 <html>
   <head>
     <title>Coordinates boilerplate example</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
     <style>
       body, html{
         background: #000;
         margin: 0;
         min-height: 100vh;
         overflow: hidden;
+        font-family: Play;
+      }
+      #header{
+        line-height: 32px;
+        height: 34px;
+        background: linear-gradient(90deg, #333, #333, #333, #333, #111, #111, #111, #111);
+        font-size: 32px;
+        padding: 0px;
+        //border-bottom: 1px solid #800;
+        position: fixed;
+        width: 100vw;
+        z-index: 100;
+      }
+      #headerTitle{
+        color: #ba8;
+        transform: scale(1.75, 1.0);
+        display: inline-block;
+        margin-left: 100px;
+        font-style: italic;
+        font-weight: 900;
+        text-shadow: 0px 0px 5px #f00;
       }
     </style>
   </head>
   <body>
-<script type="module">
+    <div id="header">
+      <div id="headerTitle">HOLEPUNCH 3D</div>
+    </div>
+    <script type="module">
 
-  import * as Coordinates from
-  "https://srmcgann.github.io/Coordinates/coordinates.min.js"
+      import * as Coordinates from
+      "https://cantelope42.github.io/tempppppp/coordinates.js?3"
+      //"https://srmcgann.github.io/Coordinates/coordinates.min.js"
 
-  var rendererOptions = {
-    ambientLight: .5, margin: 0,
-    fov: 900, width: 1920, height: 1080,
-  }
-  var renderer = await Coordinates.Renderer(rendererOptions)
+      var rendererOptions = {
+        ambientLight: .5, margin: 50, fit: 'cover',
+        fov: 900, width: 1920, height: 1080,
+      }
+      var renderer = await Coordinates.Renderer(rendererOptions)
 
-  rendererOptions.context = {
-    mode: '2d'
-  }
-  rendererOptions.attachToBody = true
-  var scratchCanvas = await Coordinates.Renderer(rendererOptions)
-  var c = scratchCanvas.c
-  var ctx = scratchCanvas.ctx
-  var w = c.width = renderer.c.width
-  var h = c.height = renderer.c.height
-  
-  var refTexture = 'https://i.imgur.com/Ad8pyZy.mp4'
-  
-  var S = Math.sin
-  var C = Math.cos
-  var Rn = Math.random
-  
-  var x, y, z, p, q, d
-  
-  Coordinates.AnimationLoop(renderer, 'Draw')
+      rendererOptions.context = {
+        mode: '2d'
+      }
+      rendererOptions.attachToBody = true
+      var scratchCanvas = await Coordinates.Renderer(rendererOptions)
+      var c = scratchCanvas.c
+      var ctx = scratchCanvas.ctx
+      var w = c.width = renderer.c.width
+      var h = c.height = renderer.c.height
+      
+      var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
+      
+      var S = Math.sin
+      var C = Math.cos
+      var Rn = Math.random
+      
+      var x, y, z, p, q, d
+      
+      Coordinates.AnimationLoop(renderer, 'Draw')
 
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .33}},
-    { uniform: {
-      type: 'phong',
-      value: .6
-    } },
-    { uniform: {
-      type: 'reflection',
-      map: refTexture,
-      value: .1
-    } },
-  ]
-  var shader = await Coordinates.BasicShader(renderer, shaderOptions)
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .33}},
+        { uniform: {
+          type: 'phong',
+          value: .6
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: refTexture,
+          value: .1
+        } },
+      ]
+      var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .5}},
-    { uniform: {
-      type: 'phong',
-      value: .4
-    } },
-    { uniform: {
-      type: 'reflection',
-      map: refTexture,
-      value: .3
-    } },
-  ]
-  var shipShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .5}},
+        { uniform: {
+          type: 'phong',
+          value: .4
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: refTexture,
+          value: .3
+        } },
+      ]
+      var shipShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: 1.5}},
-    { uniform: {
-      type: 'phong',
-      value: 0
-    } },
-  ]
-  var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: 1.5}},
+        { uniform: {
+          type: 'phong',
+          value: 0
+        } },
+      ]
+      var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .5}},
-    { uniform: {
-      type: 'phong',
-      value: 0
-    } }
-  ]
-  var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .5}},
+        { uniform: {
+          type: 'phong',
+          value: 0
+        } }
+      ]
+      var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
-  var shaderOptions = [
-    {lighting: {type: 'ambientLight', value: .1}},
-    { uniform: {
-      type: 'phong',
-      value: .1
-    } }
-  ]
-  var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
-
-
-  var shapes = []
-
-  var geoOptions = {
-    shapeType: 'dodecahedron',
-    name: 'background',
-    sphereize: 1,
-    subs: 4,
-    map: refTexture,
-    size: 5e3,
-    colorMix: 0,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await backgroundShader.ConnectGeometry(geometry)
-  })  
-  
-  var geoOptions = {
-    shapeType: 'obj',
-    url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
-    map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
-    name: 'cube grid',
-    disableDepthTest: true,
-    alpha: .9,
-    scaleX: 100,
-    scaleY: 100,
-    scaleZ: 100,
-    colorMix: 0,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await cubeGridShader.ConnectGeometry(geometry)
-  })  
-  
-  var pointArray = []
-  var rad = 100
-  var iPc = 100
-  Array(iPc).fill().map((v, i) => {
-    var ls = Rn() ** .5 * rad
-    if(0){
-      x = S(p=Math.PI*2*Rn())*S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * ls
-      y = C(q) * ls
-      z = C(p) * S(q) * ls
-    }else{
-      x = 1e5
-      y = 1e5
-      z = 1e5
-    }
-    pointArray.push([x,y,z])
-  })
-  
-  var uvs = []
-  var normals = []
-  var vertices = []
-  var normalVecs = []
-  var ls = 2.9
-  var sd = 10
-  for(var i = 0; i < sd*9; i+=3){
-    var j = i/3
-    var x1 = S(p=Math.PI*2/sd*j + Math.PI/sd) * ls
-    var y1 = C(p) * ls
-    var z1 = 0
-    var x2 = S(p=Math.PI*2/sd*(j+1) + Math.PI/sd) * ls
-    var y2 = C(p) * ls
-    var z2 = 0
-    var x3 = 0
-    var y3 = 0
-    var z3 = 0
-    vertices.push(x1,y1,z1, x2,y2,z2, x3,y3,z3)
-    normalVecs.push(0,0,-1, 0,0,-1, 0,0,-1 )
-    normals.push(0,0,0, 0,0,-1)
-    normals.push(0,0,0, 0,0,-1)
-    normals.push(0,0,0, 0,0,-1)
-    normals.push(0,0,0, 0,0,-1)
-    normals.push(0,0,0, 0,0,-1)
-    normals.push(0,0,0, 0,0,-1)
-    uvs.push(0,0,0,0,0,0)
-  }
-  var geometryData = {
-    normalVecs,
-    vertices,
-    normals,
-    uvs,
-  }
-  var geoOptions = {
-    shapeType: 'custom shape',
-    geometryData,
-    name: 'blackhole disk',
-    //size: 4.05,
-    color: 0x000000,
-    colorMix: 1,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    for(var i = 0; i < geometry.vertices.length; i += 3){
-      x = geometry.vertices[i+0]
-      y = geometry.vertices[i+1]
-      z = geometry.vertices[i+2]
-      geometry.vertices[i+0] = x - .1
-      geometry.vertices[i+1] = y + .1
-      geometry.vertices[i+2] = z + .08
-    }
-    Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
-      shapes.push(res)
-      await blackholeShader.ConnectGeometry(res)
-    })
-  })
-  
-  var particles = []
-  var geometryData = []
-  var iParticlesc = 50
-  var bars = 20
-  var ls = 60
-  var sp = ls/8
-  for(j = 0; j < bars; j ++){
-    Array(iParticlesc).fill().map((v, i) => {
-      x = S(p=Math.PI*2/iParticlesc*i) * ls
-      y = C(p) * ls
-      z = (-bars/2 + j + .5) * sp
-      var vx = 0
-      var vy = 0
-      var vz = 0
-      geometryData.push([x,y,z])
-      particles.push({ x, y, z, vx, vy, vz, ox: x, oy: y, oz: z })
-    })
-  }
-  var geoOptions = {
-    shapeType: 'particles',
-    name: 'particles',
-    geometryData,
-    alpha: .8,
-    penumbra: .33,
-    size: 5,
-    color: 0xff8800,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    console.log(geometry)
-    shapes.push(geometry)
-  })
-  
-  var cursor
-  var geoOptions = {
-    shapeType: 'sprite',
-    map: 'https://srmcgann.github.io/Coordinates/resources/stars/star1.png',
-    name: 'cursor',
-    size: 20,
-    colorMix: 0,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    cursor = geometry
-    shapes.push(geometry)
-  })
-  
-  var geoOptions = {
-    shapeType: 'obj',
-    url: 'https://srmcgann.github.io/holepunch3D/ship.obj',
-    map: 'https://srmcgann.github.io/holepunch3D/ship.png',
-    name: 'ship',
-    scaleX: 2,
-    scaleY: 2,
-    scaleZ: 2,
-    colorMix: 0,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    shapes.push(geometry)
-    await shipShader.ConnectGeometry(geometry)
-  })
-  
-  var geoOptions = {
-    shapeType: 'rect',
-    map: 'https://srmcgann.github.io/holepunch3D/blackhole.png',
-    name: 'blackhole',
-    alpha: .9,
-    disableDepthTest: true,
-    scaleY: -1,
-    size: 20,
-    colorMix: 0,
-  }
-  await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-    var base = structuredClone(geometry.vertices)
-    var cyls = shapes.filter(shape => shape.name == 'blackhole disk')[0].shapeData
-    Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
-      res.shapeData.map((subShape, sIdx) => {
-        var roll = Rn() * Math.PI*2
-        subShape.roll = roll
-        cyls[sIdx].roll = roll
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .2}},
+        { uniform: {
+          type: 'phong',
+          value: 0
+        } }
+      ]
+      var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      
+      
+      var axisLength = 50
+      var iLc = axisLength*3
+      var colors = []
+      Array(iLc).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/iLc*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
       })
-      shapes.push(res)
-      await blackholeShader.ConnectGeometry(res)
-    })
-  })
-  
+      
+      var shaderOptions = [
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: colors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            mixColor = attribCols;
+          `,
+        }},
+      ]
+      var linesShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      
 
-  if(1) Coordinates.LoadFPSControls(renderer, {
-    flyMode: true,
-    mSpeed: 2,
-    crossharSel: 2,
-    crosshairSize: .5,
-  })
 
-  var blackholes = Array(iPc).fill().map(v => {
-    x = 1e5
-    y = 1e5
-    z = 1e5
-    return { x, y, z }
-  })
-  var hasMouse = true
-  var cursorDist = 16
-  var bhIdx
-  const Init = () => {
-    bhIdx = 0
-    window.onkeydown = e => {
-      if(e.keyCode == 13){
-        
+      var shapes = []
+
+      var geoOptions = {
+        shapeType: 'dodecahedron',
+        name: 'background',
+        sphereize: 1,
+        subs: 4,
+        map: refTexture,
+        size: 5e3,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await backgroundShader.ConnectGeometry(geometry)
+      })  
+      
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
+        name: 'cube grid',
+        disableDepthTest: true,
+        alpha: .9,
+        scaleX: 1e3,
+        scaleY: 1e3,
+        scaleZ: 1e3,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await cubeGridShader.ConnectGeometry(geometry)
+      })  
+      
+      var pointArray = []
+      var rad = 100
+      var iPc = 100
+      Array(iPc).fill().map((v, i) => {
+        var ls = Rn() ** .5 * rad
+        if(0){
+          x = S(p=Math.PI*2*Rn())*S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * ls
+          y = C(q) * ls
+          z = C(p) * S(q) * ls
+        }else{
+          x = 1e5
+          y = 1e5
+          z = 1e5
+        }
+        pointArray.push([x,y,z])
+      })
+      
+      var uvs = []
+      var normals = []
+      var vertices = []
+      var normalVecs = []
+      var ls = 2.9
+      var sd = 10
+      for(var i = 0; i < sd*9; i+=3){
+        var j = i/3
+        var x1 = S(p=Math.PI*2/sd*j + Math.PI/sd) * ls
+        var y1 = C(p) * ls
+        var z1 = 0
+        var x2 = S(p=Math.PI*2/sd*(j+1) + Math.PI/sd) * ls
+        var y2 = C(p) * ls
+        var z2 = 0
+        var x3 = 0
+        var y3 = 0
+        var z3 = 0
+        vertices.push(x1,y1,z1, x2,y2,z2, x3,y3,z3)
+        normalVecs.push(0,0,-1, 0,0,-1, 0,0,-1 )
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        uvs.push(0,0,0,0,0,0)
+      }
+      var geometryData = {
+        normalVecs,
+        vertices,
+        normals,
+        uvs,
+      }
+      var geoOptions = {
+        shapeType: 'custom shape',
+        geometryData,
+        name: 'blackhole disk',
+        //size: 4.05,
+        color: 0x000000,
+        colorMix: 1,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        for(var i = 0; i < geometry.vertices.length; i += 3){
+          x = geometry.vertices[i+0]
+          y = geometry.vertices[i+1]
+          z = geometry.vertices[i+2]
+          geometry.vertices[i+0] = x - .1
+          geometry.vertices[i+1] = y + .1
+          geometry.vertices[i+2] = z + .08
+        }
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          shapes.push(res)
+          await blackholeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var lines = []
+      var geometryData = []
+      var linesShape
+      Array(iLc).fill().map((v, i) => {
+        geometryData.push([1e5,1e5,1e5],[1e5,1e5,1e5])
+      })
+      var geoOptions = {
+        shapeType: 'lines',
+        name: 'lines',
+        geometryData,
+        alpha: .5,
+        penumbra: .33,
+        size: 15,
+        color: 0xff8800,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        linesShape = geometry
+        await linesShader.ConnectGeometry(geometry)
+      })
+
+      /*
+      var particles = []
+      var geometryData = []
+      var iParticlesc = 50
+      var bars = 20
+      var ls = 60
+      var sp = ls/8
+      for(j = 0; j < bars; j ++){
+        Array(iParticlesc).fill().map((v, i) => {
+          x = S(p=Math.PI*2/iParticlesc*i) * ls
+          y = C(p) * ls
+          z = (-bars/2 + j + .5) * sp
+          var vx = 0
+          var vy = 0
+          var vz = 0
+          geometryData.push([x,y,z])
+          particles.push({ x, y, z, vx, vy, vz, ox: x, oy: y, oz: z })
+        })
+      }
+      var geoOptions = {
+        shapeType: 'particles',
+        name: 'particles',
+        geometryData,
+        alpha: .8,
+        penumbra: .33,
+        size: 5,
+        color: 0xff8800,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+      })
+      */
+      
+      var cursor
+      var geoOptions = {
+        shapeType: 'sprite',
+        map: 'https://srmcgann.github.io/Coordinates/resources/stars/star1.png',
+        name: 'cursor',
+        size: 20,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        cursor = geometry
+        shapes.push(geometry)
+      })
+      
+      /*
+      var geoOptions = {
+        shapeType: 'octahedron',
+        sphereize: 1,
+        subs: 1,
+        name: 'test marker',
+        rotationMode: 2,
+        size: 5,
+        color: 0xff0000,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        await Coordinates.ShapeToLines(geometry).then(res => {
+          res.shape.rotationMode = 2
+          res.shape.name = 'test marker'
+          res.shape.color = 0x00ffff
+          shapes.push(res.shape)
+        })
+      })
+      */
+      
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/ship.obj?2',
+        map: 'https://srmcgann.github.io/holepunch3D/ship.png',
+        name: 'ship',
+        rotationMode: 2,
+        scaleX: 1,
+        scaleY: 1,
+        scaleZ: 1,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await shipShader.ConnectGeometry(geometry)
+      })
+      
+      var geoOptions = {
+        shapeType: 'rect',
+        map: 'https://srmcgann.github.io/holepunch3D/blackhole.png',
+        name: 'blackhole',
+        alpha: .9,
+        disableDepthTest: true,
+        scaleY: -1,
+        size: 20,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        var base = structuredClone(geometry.vertices)
+        var cyls = shapes.filter(shape => shape.name == 'blackhole disk')[0].shapeData
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          res.shapeData.map((subShape, sIdx) => {
+            var roll = Rn() * Math.PI*2
+            subShape.roll = roll
+            cyls[sIdx].roll = roll
+          })
+          shapes.push(res)
+          await blackholeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var iTargc = 10
+      var targets = []
+      var targetsShape
+      var pointArray = []
+      Array(iTargc).fill().map(v => {
+        pointArray.push([x=1e5,y=1e5,z=1e5])
+      })
+      
+      const SpawnTarget = (x, y, z, vx=0, vy=0, vz=0) => {
+        targets.push({ x, y, z, vx, vy, vz })
+      }
+      
+      
+      const LoadLevel = level => {
+        switch(level) {
+          case 1:
+            targets = []
+            SpawnTarget(50, 10, 25)
+            renderer.yaw = -.5
+            renderer.z = 40
+          break
+        }
+      }
+      LoadLevel(1)
+      
+      var geoOptions = {
+        shapeType: 'sprite',
+        map: 'https://srmcgann.github.io/holepunch3D/target.png',
+        name: 'target',
+        size: 10,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        Coordinates.ShapeFromArray(geometry, pointArray).then(res => {
+          targetsShape = res
+          shapes.push(res)
+        })
+      })
+      
+
+
+      const LoadFPS = () => {
+        Coordinates.LoadFPSControls(renderer, {
+          flyMode: true,
+          mSpeed: 2,
+          crossharSel: 2,
+          crosshairSize: .5,
+        })
+      }
+
+      var blackholes = Array(iPc).fill().map(v => {
+        x = 1e5
+        y = 1e5
+        z = 1e5
+        return { x, y, z }
+      })
+      
+      var accel
+      var maxDist = 150
+      const DoKeys = () => {
+        accel = keys[16] ? 3 : 1
+        keys.map((state, key) => {
+          if(state){
+            
+            switch(key){
+              case 87: //w
+                renderer.z -= 1 * accel
+                if(renderer.cameraMode != 'fps'){
+                  renderer.z = Math.max(10, renderer.z)
+                }
+              break
+              case 65: //a
+                if(renderer.cameraMode != 'fps'){
+                  renderer.yaw -= .025 * accel
+                }
+              break
+              case 83: //s
+                if(renderer.cameraMode != 'fps'){
+                  renderer.z += 1 * accel
+                  renderer.z = Math.min(maxDist, renderer.z)
+                }
+              break
+              case 68: //d
+                if(renderer.cameraMode != 'fps'){
+                  renderer.yaw += .025 * accel
+                }
+              break
+              case 37: // left arrow
+                renderer.yaw -= .025 * accel
+              break
+              case 38: // up arrow
+                renderer.pitch -= .025 * accel
+                if(renderer.cameraMode != 'fps'){
+                  renderer.pitch = Math.min(1, Math.max(-1, renderer.pitch))
+                }
+              break
+              case 39: // right arrow
+                renderer.yaw += .025 * accel
+              break
+              case 40: // down arrow
+                renderer.pitch += .025 * accel
+                if(renderer.cameraMode != 'fps'){
+                  renderer.pitch = Math.min(1, Math.max(-1, renderer.pitch))
+                }
+              break
+            }
+          }
+        })
+      }
+      
+      const PlaceBlackHole = () => {
         blackholes[bhIdx].x = cursor.x
         blackholes[bhIdx].y = cursor.y
         blackholes[bhIdx].z = cursor.z
@@ -321,170 +520,401 @@
         bhIdx++
         bhIdx%=iPc
       }
-    }
-    window.onmousewheel = e => {
-      cursorDist -= e.deltaY / 100
-    }
-    window.onmouseout = () => {
-      hasMouse = false
-    }
-    window.onmouseover = () => {
-      hasMouse = true
-    }
-  }
-  Init()
-  
-  const processScratchCanvas = () => {
-  
-    ctx.clearRect(0,0,w,h)
-    if(hasMouse){
-      ctx.fillStyle= '#f00'
-      var s = 10
-      var mx = renderer.mouseX
-      var my = renderer.mouseY
-      ctx.fillRect(mx-s/2,my-s/2,s,s)
       
-      
-      if(!document.pointerLockElement){
-        var mag = .1111111 / (1/(cursorDist/10))
-        x = (mx - w/2) * mag
-        y = -(my - h/2) * mag
-        z = 50 / .1111111 * mag
-        p = Math.atan2(y, z) - renderer.pitch
-        d = Math.hypot(y, z)
-        y = S(p) * d
-        z = C(p) * d
-        p = Math.atan2(x, z) - renderer.yaw
-        d = Math.hypot(x, z)
-        x = S(p) * d
-        z = C(p) * d
-        cursor.x = x - renderer.x
-        cursor.y = y - renderer.y 
-        cursor.z = z - renderer.z
-      }
-    }
-  }
-  
-  renderer.z = 20
-  
-  var homing = 100
-  var drag = 1.1
-  var grav = .05
-  window.Draw = () => {
-    var t = renderer.frameCount/60
-    processScratchCanvas()
-    
-    if(!(renderer.frameCount%10)){
-      var tx, ty, tz
-      for(var i = 0; i < particles.length; i ++){
-        var p1 = particles[i]
-        var p2 = particles[(i+1)%particles.length]
-        
-        if(!i){
-          tx = p1.ox
-          ty = p1.oy
-          tz = p1.oz
-        }
-        if(i < particles.length - 1){
-          p1.ox = p2.ox
-          p1.oy = p2.oy
-          p1.oz = p2.oz
-        }else{
-          p1.ox = tx
-          p1.oy = ty
-          p1.oz = tz
+      var hasMouse = true
+      var cursorDist = 16
+      var bhIdx, keys, keyTimers
+      var ship
+      const Init = () => {
+        bhIdx = 0
+        keys = Array(128).fill(false)
+        keyTimers = Array(128).fill(false)
+        window.onkeyup = e => {
+          keys[e.keyCode] = false
         }
         
+        
+        
+        window.onmousedown = e => {
+          if(e.button == 0 && renderer.cameraMode != 'fps') PlaceBlackHole()
+        }
+        
+        window.onkeydown = e => {
+          console.log(e.keyCode)
+          keys[e.keyCode] = true
+          if(e.keyCode == 77){
+            if(renderer.cameraMode == 'fps'){
+              const UnloadFPSControls = async (renderer) => {
+                renderer.cameraMode     = 'default'
+                renderer.showCrosshair  = false
+                renderer.useFPSControls = false
+              }
+              renderer.x = renderer.y = 0
+              renderer.z = 20
+              renderer.cameraMode = 'default'
+            }else{
+              LoadFPS()
+            }
+          }
+          if(e.keyCode == 13) PlaceBlackHole()
+        }
+        window.onmousewheel = e => {
+          cursorDist -= e.deltaY / 100
+        }
+        window.onmouseout = () => {
+          hasMouse = false
+        }
+        window.onmouseover = () => {
+          hasMouse = true
+        }
+        
+        ship = {
+          x: 0,
+          y: 0,
+          z: 0,
+          vx: 0,
+          vy: 0,
+          vz: 0,
+        }
       }
-    }
-    
-    renderer.Clear()
-    shapes.forEach(shape => {
-      switch(shape.name){
-        case 'background':
-          renderer.Draw(shape)
-        break
-        case 'particles':
-          console.log(blackholes)
-          for(var i = 0; i < shape.vertices.length; i += 3){
-            var j = i/3
-            if(j < particles.length){
-              particles[j].vx += (particles[j].ox - particles[j].x) / homing
-              particles[j].vy += (particles[j].oy - particles[j].y) / homing
-              particles[j].vz += (particles[j].oz - particles[j].z) / homing
+      Init()
+      
+      
+      const ProcessScratchCanvas = () => {
+      
+        ctx.clearRect(0,0,w,h)
+        if(hasMouse){
+          ctx.fillStyle= '#f00'
+          var s = 10
+          var mx = renderer.mouseX
+          var my = renderer.mouseY
+          ctx.fillRect(mx-s/2,my-s/2,s,s)
+          
+          
+          if(!document.pointerLockElement){
+            var rx, ry, rz
+            var fps = renderer.cameraMode == 'fps'
+            var fac = 1/renderer.fov*100
+            if(renderer.cameraMode == 'fps'){
+              var mag = fac / (1/(cursorDist/10))
+              x = (mx - w/2) * mag
+              y = -(my - h/2) * mag
+              z = 50 / fac * mag
+              p = Math.atan2(y, z) - renderer.pitch
+              d = Math.hypot(y, z)
+              y = S(p) * d
+              z = C(p) * d
+              p = Math.atan2(x, z) - renderer.yaw
+              d = Math.hypot(x, z)
+              x = S(p) * d
+              z = C(p) * d
               
-              var x1 = particles[j].x
-              var y1 = particles[j].y
-              var z1 = particles[j].z
-              blackholes.map((v, i) => {
+              rx = renderer.x
+              ry = renderer.y
+              rz = renderer.z
+              cursor.x = x - rx
+              cursor.y = y - ry 
+              cursor.z = z - rz
+            }else{
+              var mag = fac / (1/(cursorDist/10))
+
+              var rx = 0
+              var ry = 0
+              var rz = renderer.z/(1+fac)
+              p = Math.atan2(ry, rz) + renderer.pitch
+              d = Math.hypot(ry, rz)
+              ry = S(p) * d
+              rz = C(p) * d
+              p = Math.atan2(rx, rz) - renderer.yaw
+              d = Math.hypot(rx, rz)
+              rx = S(p) * d
+              rz = C(p) * d
+
+              
+              x = (mx - w/2) * mag
+              y = -(my - h/2) * mag
+              z = 50 / fac * mag
+              p = Math.atan2(y, z) + renderer.pitch
+              d = Math.hypot(y, z)
+              y = S(p) * d
+              z = C(p) * d
+              p = Math.atan2(x, z) - renderer.yaw
+              d = Math.hypot(x, z)
+              x = S(p) * d
+              z = C(p) * d
+              
+              cursor.x = x - rx
+              cursor.y = y - ry 
+              cursor.z = z - rz
+
+            }
+            
+            /*
+            var shape = shapes.filter(v=>v.name == 'test marker')
+            if(shape.length){
+              var rx = 0
+              var ry = 0
+              var rz = renderer.z/(1+fac)
+              p = Math.atan2(ry, rz) - renderer.pitch
+              d = Math.hypot(ry, rz)
+              ry = S(p) * d
+              rz = C(p) * d
+              p = Math.atan2(rx, rz) + renderer.yaw
+              d = Math.hypot(rx, rz)
+              rx = S(p) * d
+              rz = C(p) * d
+
+              shape = shape[0]
+              shape.x = rx
+              shape.y = ry
+              shape.z = rz
+              shape.pitch = renderer.pitch
+              shape.yaw = -renderer.yaw
+            }
+            */
+            
+            if(!document.pointerLockElement){
+              var ct = 0
+              var colors = linesShape.shader.datasets[0].optionalAttributes[0].value
+              for(var m = 0; m < 3; m++){
+                var red, green, blue
+                switch(m){
+                  case 0:
+                    red = 1
+                    green = 0
+                    blue = 0
+                  break
+                  case 1:
+                    red = 0
+                    green = 1
+                    blue = 0
+                  break
+                  case 2:
+                    red = 0
+                    green = 0
+                    blue = 1
+                  break
+                }
+                for(var i = 0; i < 50; i++){
+                  var x1 = cursor.x
+                  var y1 = cursor.y
+                  var z1 = cursor.z
+                  var x2 = cursor.x
+                  var y2 = cursor.y
+                  var z2 = cursor.z
+                  var a = [i / 50 * axisLength-axisLength/2, 0, 0,
+                       (i+1) / 50 * axisLength-axisLength/2, 0, 0]
+                  var ar = Coordinates.GetShaderCoord(x1 + a[m%3],
+                                       y1 + a[(m+1)%3], z1 + a[(m+2)%3],
+                                       linesShape,renderer)
+                  if(ar){
+                    linesShape.vertices[ct + 0] = -x1 - a[m%3]
+                    linesShape.vertices[ct + 1] = y1 + a[(m+1)%3]
+                    linesShape.vertices[ct + 2] = z1 + a[(m+2)%3]
+                    linesShape.vertices[ct + 3] = -x2 - a[(m%3)+3]
+                    linesShape.vertices[ct + 4] = y2 + a[((m+1)%3)+3]
+                    linesShape.vertices[ct + 5] = z2 + a[((m+2)%3)+3]
+                    
+                    for(var j=3;j--;){
+                      for(var k = 6; k--;){
+                        var idx = ct/6*24 + k*4
+                        colors[idx + 0] = red
+                        colors[idx + 1] = green
+                        colors[idx + 2] = blue
+                        colors[idx + 3] = 1
+                      }
+                    }
+                  }else{
+                    linesShape.vertices[ct + 0] = 1e5
+                    linesShape.vertices[ct + 1] = 1e5
+                    linesShape.vertices[ct + 2] = 1e5
+                    linesShape.vertices[ct + 3] = 1e5
+                    linesShape.vertices[ct + 4] = 1e5
+                    linesShape.vertices[ct + 5] = 1e5
+                  }
+                  ct += 6
+                }
+              }
+            }else{
+              for(i = 0; i < linesShape.vertices.length; i += 3){
+                linesShape.vertices[i+0] = 1e5
+                linesShape.vertices[i+1] = 1e5
+                linesShape.vertices[i+2] = 1e5
+              }
+            }
+          }else{
+            for(i = 0; i < linesShape.vertices.length; i += 3){
+              linesShape.vertices[i+0] = 1e5
+              linesShape.vertices[i+1] = 1e5
+              linesShape.vertices[i+2] = 1e5
+            }
+          }
+        }
+      }
+      
+      
+      var homing = 100
+      var drag = 1.1
+      var grav = .05
+      window.Draw = () => {
+        var t = renderer.frameCount/60
+        
+        DoKeys()
+        ProcessScratchCanvas()
+        
+        if(0 && !(renderer.frameCount%10)){
+          var tx, ty, tz
+          for(var i = 0; i < particles.length; i ++){
+            var p1 = particles[i]
+            var p2 = particles[(i+1)%particles.length]
+            
+            if(!i){
+              tx = p1.ox
+              ty = p1.oy
+              tz = p1.oz
+            }
+            if(i < particles.length - 1){
+              p1.ox = p2.ox
+              p1.oy = p2.oy
+              p1.oz = p2.oz
+            }else{
+              p1.ox = tx
+              p1.oy = ty
+              p1.oz = tz
+            }
+            
+          }
+        }
+        
+        renderer.Clear()
+        shapes.forEach(shape => {
+          switch(shape.name){
+            case 'background':
+              shape.x = -renderer.x
+              shape.y = -renderer.y
+              shape.z = -renderer.z
+              //shape.color = 0xffffff
+              //shape.colorMix = 1
+              renderer.Draw(shape)
+            break
+            case 'particles':
+              for(var i = 0; i < shape.vertices.length; i += 3){
+                var j = i/3
+                if(j < particles.length){
+                  particles[j].vx += (particles[j].ox - particles[j].x) / homing
+                  particles[j].vy += (particles[j].oy - particles[j].y) / homing
+                  particles[j].vz += (particles[j].oz - particles[j].z) / homing
+                  
+                  var x1 = particles[j].x
+                  var y1 = particles[j].y
+                  var z1 = particles[j].z
+                  blackholes.map((v, i) => {
+                    if(v.x != 1e5){
+                      var x2 = v.x
+                      var y2 = v.y
+                      var z2 = v.z
+                      d = 5+(Math.hypot(x2-x1, y2-y1, z2-z1))**3/1e4
+                      particles[j].vx += (x2-x1) / d * grav
+                      particles[j].vy += (y2-y1) / d * grav
+                      particles[j].vz += (z2-z1) / d * grav
+                    }
+                  })
+                  
+                  x = particles[j].x += particles[j].vx /= drag
+                  y = particles[j].y += particles[j].vy /= drag
+                  z = particles[j].z += particles[j].vz /= drag
+                  shape.vertices[i+0] = x
+                  shape.vertices[i+1] = y
+                  shape.vertices[i+2] = z
+                }else{
+                  shape.vertices[i+0] = 1e5
+                  shape.vertices[i+1] = 1e5
+                  shape.vertices[i+2] = 1e5
+                }
+              }
+              renderer.Draw(shape)
+            break
+            case 'blackhole':
+              shape.shapeData.map((subShape, sIdx) => {
+                subShape.x = blackholes[sIdx].x - subShape.ox
+                subShape.y = blackholes[sIdx].y - subShape.oy
+                subShape.z = blackholes[sIdx].z - subShape.oz
+
+                subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
+                subShape.yaw   = (-renderer.yaw) - shape.yaw
+                subShape.roll += .005 * (sIdx %2 ? -1 : 1)
+              })
+              shape.rotationMode = 2
+              
+              //shape.yaw = t / 4
+              renderer.Draw(shape)
+            break
+            case 'blackhole disk':
+              shape.shapeData.map((subShape, sIdx) => {
+                subShape.x = blackholes[sIdx].x - subShape.ox
+                subShape.y = blackholes[sIdx].y - subShape.oy
+                subShape.z = blackholes[sIdx].z - subShape.oz
+                subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
+                subShape.yaw   = (-renderer.yaw) - shape.yaw
+                subShape.roll += .001 * (sIdx %2 ? -1 : 1)
+              })
+              shape.rotationMode = 2
+            
+              //shape.yaw = t / 4
+              renderer.Draw(shape)
+            break
+            case 'test marker':
+              renderer.Draw(shape)
+            break
+            case 'ship':
+              var shipDrag = 1.000001
+              blackholes.forEach((v, i) => {
                 if(v.x != 1e5){
-                  var x2 = v.x
-                  var y2 = v.y
-                  var z2 = v.z
-                  d = 5+(Math.hypot(x2-x1, y2-y1, z2-z1))**3/1e4
-                  particles[j].vx += (x2-x1) / d * grav
-                  particles[j].vy += (y2-y1) / d * grav
-                  particles[j].vz += (z2-z1) / d * grav
+                  var dx1 = v.x - ship.x
+                  var dy1 = v.y - ship.y
+                  var dz1 = v.z - ship.z
+                  d = 1+(Math.hypot(dx1, dy1, dz1)) ** 3 / 50
+                  ship.vx += dx1 / d * grav
+                  ship.vy += dy1 / d * grav
+                  ship.vz += dz1 / d * grav
                 }
               })
               
-              x = particles[j].x += particles[j].vx /= drag
-              y = particles[j].y += particles[j].vy /= drag
-              z = particles[j].z += particles[j].vz /= drag
-              shape.vertices[i+0] = x
-              shape.vertices[i+1] = y
-              shape.vertices[i+2] = z
-            }else{
-              shape.vertices[i+0] = 1e5
-              shape.vertices[i+1] = 1e5
-              shape.vertices[i+2] = 1e5
-            }
+              var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
+              var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
+              
+              shape.yaw = p1
+              shape.pitch = p2
+            
+              shape.x = ship.x += ship.vx /= shipDrag
+              shape.y = ship.y += ship.vy /= shipDrag
+              shape.z = ship.z += ship.vz /= shipDrag
+              renderer.Draw(shape)
+            break
+            case 'target':
+              shape.shapeData.map((subShape, sIdx) => {
+                if(sIdx < targets.length){
+                  subShape.x = targets[sIdx].x - subShape.ox
+                  subShape.y = targets[sIdx].y - subShape.oy
+                  subShape.z = targets[sIdx].z - subShape.oz
+                }else{
+                  subShape.x = 1e5
+                  subShape.y = 1e5
+                  subShape.z = 1e5
+                }
+              })
+              renderer.Draw(shape)
+            break
+            case 'main':
+              renderer.Draw(shape)
+            break
+            default:
+              renderer.Draw(shape)
+            break
           }
-          renderer.Draw(shape)
-        break
-        case 'blackhole':
-          shape.shapeData.map((subShape, sIdx) => {
-            subShape.x = blackholes[sIdx].x - subShape.ox
-            subShape.y = blackholes[sIdx].y - subShape.oy
-            subShape.z = blackholes[sIdx].z - subShape.oz
-
-            subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
-            subShape.yaw   = (-renderer.yaw) - shape.yaw
-            subShape.roll += .005 * (sIdx %2 ? -1 : 1)
-          })
-          shape.rotationMode = 2
-          
-          //shape.yaw = t / 4
-          renderer.Draw(shape)
-        break
-        case 'blackhole disk':
-          shape.shapeData.map((subShape, sIdx) => {
-            subShape.x = blackholes[sIdx].x - subShape.ox
-            subShape.y = blackholes[sIdx].y - subShape.oy
-            subShape.z = blackholes[sIdx].z - subShape.oz
-            subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
-            subShape.yaw   = (-renderer.yaw) - shape.yaw
-            subShape.roll += .001 * (sIdx %2 ? -1 : 1)
-          })
-          shape.rotationMode = 2
-        
-          //shape.yaw = t / 4
-          renderer.Draw(shape)
-        break
-        case 'ship':
-          //shape.yaw += .005
-          //renderer.Draw(shape)
-        break
-        case 'main':
-          renderer.Draw(shape)
-        break
-        default:
-          renderer.Draw(shape)
-        break
+        })
       }
-    })
-  }
-  
-</script>
+      
+    </script>
   </body>
 </html>
