@@ -1,5 +1,20 @@
 <!--
   link https://notoriousbfg.com/hole-punch
+  
+  to do:
+    ✔ new blackhole sprite, suitable for size/mass adjustments
+    ✔ improved cursor
+    death screen (ship has left the container)
+    add / remove / delete blackholes
+    quick change view X/Y/Z
+    ship camera-view toggle
+    undo button
+    reset button
+    path of travel "line"
+    mass meter
+    set / change mass
+    ship-tracking camera mode for attempts
+    levels
 -->
 <!DOCTYPE html>
 <html>
@@ -64,7 +79,15 @@
       var w = c.width = renderer.c.width
       var h = c.height = renderer.c.height
       
-      var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
+      //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
+      var refTexture = 'https://i.imgur.com/Ad8pyZy.mp4'
+      
+      var HUD = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/HUD.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        HUD.src = URL.createObjectURL(data)
+      })
+      
       
       var S = Math.sin
       var C = Math.cos
@@ -87,6 +110,15 @@
         } },
       ]
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .2}},
+        { uniform: {
+          type: 'phong',
+          value: 0
+        } },
+      ]
+      var cursorBoundingShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
         {lighting: {type: 'ambientLight', value: .5}},
@@ -131,7 +163,7 @@
       
       
       var axisLength = 50
-      var iLc = axisLength*3
+      var iLc = axisLength*3 + 1e3
       var colors = []
       Array(iLc).fill().map((v, i) => {
         var rgb   = Coordinates.HSVToRGB(360/iLc*i, 1, 1)
@@ -165,6 +197,44 @@
         }},
       ]
       var linesShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
+      var iSmokec = 1e3
+      var iSmokev = .04
+      var iSmokec = axisLength*3 + 1e3
+      var particleColors = []
+      Array(iSmokec).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/iSmokec*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
+      
+      var shaderOptions = [
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: particleColors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            mixColor = attribCols;
+          `,
+        }},
+      ]
+      var particleShader = await Coordinates.BasicShader(renderer, shaderOptions)
       
 
 
@@ -200,6 +270,43 @@
         shapes.push(geometry)
         await cubeGridShader.ConnectGeometry(geometry)
       })  
+      
+      var pointArray = Array(5).fill().map((v,i)=>[0,0,0])
+      var cbVerts
+      var cbSize = 4
+      var geoOptions = {
+        shapeType: 'icosahedron',
+        subs: 1,
+        sphereize: 4,
+        name: 'cursor bounding',
+        disableDepthTest: true,
+        alpha: .5,
+        size: 10,
+        colorMix: .025,
+        color: 0xff0000,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        cbVerts = structuredClone(geometry.vertices)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          for(var i = 0; i < res.vertices.length; i+= res.stride){
+            var ls = 1 + i/res.stride*cbSize
+            for(var j = 0; j < res.stride; j+=3){
+              var idx = j + i
+              x = res.vertices[idx+0] *= ls
+              y = res.vertices[idx+1] *= ls
+              z = res.vertices[idx+2] *= ls
+              //console.log(x,y,z)
+              res.vstate[idx+0] *= ls
+              res.vstate[idx+1] *= ls
+              res.vstate[idx+2] *= ls
+            }
+          }
+          shapes.push(res)
+          await cursorBoundingShader.ConnectGeometry(geometry)
+        })
+      })
+
+      
       
       var pointArray = []
       var rad = 100
@@ -264,8 +371,8 @@
           x = geometry.vertices[i+0]
           y = geometry.vertices[i+1]
           z = geometry.vertices[i+2]
-          geometry.vertices[i+0] = x - .1
-          geometry.vertices[i+1] = y + .1
+          //geometry.vertices[i+0] = x - .1
+          //geometry.vertices[i+1] = y + .1
           geometry.vertices[i+2] = z + .08
         }
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
@@ -294,6 +401,31 @@
         linesShape = geometry
         await linesShader.ConnectGeometry(geometry)
       })
+
+      var smoke = []
+      var geoOptions = {
+        shapeType: 'particles',
+        name: 'smoke particles',
+        geometryData: Array(iSmokec).fill().map(v=>[1e5,1e5,1e5]),
+        alpha: 1,
+        disableDepthTest: true,
+        penumbra: .5,
+        size: 16,
+        color: 0xffbb88,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await particleShader.ConnectGeometry(geometry)
+      })
+      
+      
+      const SpawnSmoke = (x, y, z) => {
+        var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * iSmokev
+        var vy = C(q) * iSmokev
+        var vz = C(p) * S(q) * iSmokev
+        smoke.push({ x, y, z, vx, vy, vz, life: 1 })
+        smoke = smoke.filter((v, i) => i >= smoke.length-iSmokec)
+      }
 
       /*
       var particles = []
@@ -335,6 +467,7 @@
         name: 'cursor',
         size: 20,
         colorMix: 0,
+        disableDepthTest: true,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         cursor = geometry
@@ -368,9 +501,9 @@
         map: 'https://srmcgann.github.io/holepunch3D/ship.png',
         name: 'ship',
         rotationMode: 2,
-        scaleX: 1,
-        scaleY: 1,
-        scaleZ: 1,
+        scaleX: 3,
+        scaleY: 3,
+        scaleZ: 3,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -380,12 +513,12 @@
       
       var geoOptions = {
         shapeType: 'rect',
-        map: 'https://srmcgann.github.io/holepunch3D/blackhole.png',
+        map: 'https://srmcgann.github.io/holepunch3D/blackhole_new.png',
         name: 'blackhole',
         alpha: .9,
         disableDepthTest: true,
         scaleY: -1,
-        size: 20,
+        size: 10,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -419,7 +552,7 @@
         switch(level) {
           case 1:
             targets = []
-            SpawnTarget(50, 10, 25)
+            SpawnTarget(100, 20, 50)
             renderer.yaw = -.5
             renderer.z = 40
           break
@@ -431,11 +564,13 @@
         shapeType: 'sprite',
         map: 'https://srmcgann.github.io/holepunch3D/target.png',
         name: 'target',
-        size: 10,
+        size: 50,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-        Coordinates.ShapeFromArray(geometry, pointArray).then(res => {
+        targetsShape = geometry
+        shapes.push(geometry)
+        if(0)Coordinates.ShapeFromArray(geometry, pointArray).then(res => {
           targetsShape = res
           shapes.push(res)
         })
@@ -446,9 +581,10 @@
       const LoadFPS = () => {
         Coordinates.LoadFPSControls(renderer, {
           flyMode: true,
-          mSpeed: 2,
+          mSpeed: 25,
           crossharSel: 2,
           crosshairSize: .5,
+          showCrosshair: false,
         })
       }
 
@@ -460,7 +596,7 @@
       })
       
       var accel
-      var maxDist = 150
+      var maxDist = 1e3
       const DoKeys = () => {
         accel = keys[16] ? 3 : 1
         keys.map((state, key) => {
@@ -468,8 +604,8 @@
             
             switch(key){
               case 87: //w
-                renderer.z -= 1 * accel
                 if(renderer.cameraMode != 'fps'){
+                  renderer.z -= 1 * accel
                   renderer.z = Math.max(10, renderer.z)
                 }
               break
@@ -490,7 +626,7 @@
                 }
               break
               case 37: // left arrow
-                renderer.yaw -= .025 * accel
+                renderer.yaw += .025 * accel
               break
               case 38: // up arrow
                 renderer.pitch -= .025 * accel
@@ -499,7 +635,7 @@
                 }
               break
               case 39: // right arrow
-                renderer.yaw += .025 * accel
+                renderer.yaw -= .025 * accel
               break
               case 40: // down arrow
                 renderer.pitch += .025 * accel
@@ -524,9 +660,10 @@
       var hasMouse = true
       var cursorDist = 16
       var bhIdx, keys, keyTimers
-      var ship
+      var ship, shipView
       const Init = () => {
         bhIdx = 0
+        shipView = false
         keys = Array(128).fill(false)
         keyTimers = Array(128).fill(false)
         window.onkeyup = e => {
@@ -542,6 +679,13 @@
         window.onkeydown = e => {
           console.log(e.keyCode)
           keys[e.keyCode] = true
+          if(e.keyCode == 79){
+            shipView = !shipView
+            if(shipView && renderer.cameraMode != 'fps'){
+              LoadFPS()
+              //renderer.useKeys = false
+            }
+          }
           if(e.keyCode == 77){
             if(renderer.cameraMode == 'fps'){
               const UnloadFPSControls = async (renderer) => {
@@ -673,73 +817,65 @@
             }
             */
             
-            if(!document.pointerLockElement){
-              var ct = 0
-              var colors = linesShape.shader.datasets[0].optionalAttributes[0].value
-              for(var m = 0; m < 3; m++){
-                var red, green, blue
-                switch(m){
-                  case 0:
-                    red = 1
-                    green = 0
-                    blue = 0
-                  break
-                  case 1:
-                    red = 0
-                    green = 1
-                    blue = 0
-                  break
-                  case 2:
-                    red = 0
-                    green = 0
-                    blue = 1
-                  break
-                }
-                for(var i = 0; i < 50; i++){
-                  var x1 = cursor.x
-                  var y1 = cursor.y
-                  var z1 = cursor.z
-                  var x2 = cursor.x
-                  var y2 = cursor.y
-                  var z2 = cursor.z
-                  var a = [i / 50 * axisLength-axisLength/2, 0, 0,
-                       (i+1) / 50 * axisLength-axisLength/2, 0, 0]
-                  var ar = Coordinates.GetShaderCoord(x1 + a[m%3],
-                                       y1 + a[(m+1)%3], z1 + a[(m+2)%3],
-                                       linesShape,renderer)
-                  if(ar){
-                    linesShape.vertices[ct + 0] = -x1 - a[m%3]
-                    linesShape.vertices[ct + 1] = y1 + a[(m+1)%3]
-                    linesShape.vertices[ct + 2] = z1 + a[(m+2)%3]
-                    linesShape.vertices[ct + 3] = -x2 - a[(m%3)+3]
-                    linesShape.vertices[ct + 4] = y2 + a[((m+1)%3)+3]
-                    linesShape.vertices[ct + 5] = z2 + a[((m+2)%3)+3]
-                    
-                    for(var j=3;j--;){
-                      for(var k = 6; k--;){
-                        var idx = ct/6*24 + k*4
-                        colors[idx + 0] = red
-                        colors[idx + 1] = green
-                        colors[idx + 2] = blue
-                        colors[idx + 3] = 1
-                      }
-                    }
-                  }else{
-                    linesShape.vertices[ct + 0] = 1e5
-                    linesShape.vertices[ct + 1] = 1e5
-                    linesShape.vertices[ct + 2] = 1e5
-                    linesShape.vertices[ct + 3] = 1e5
-                    linesShape.vertices[ct + 4] = 1e5
-                    linesShape.vertices[ct + 5] = 1e5
-                  }
-                  ct += 6
-                }
+            var ct = 0
+            var colors = linesShape.shader.datasets[0].optionalAttributes[0].value
+            for(var m = 0; m < 3; m++){
+              var red, green, blue
+              switch(m){
+                case 0:
+                  red = 1
+                  green = 0
+                  blue = 0
+                break
+                case 1:
+                  red = 0
+                  green = 1
+                  blue = 0
+                break
+                case 2:
+                  red = 0
+                  green = 0
+                  blue = 1
+                break
               }
-            }else{
-              for(i = 0; i < linesShape.vertices.length; i += 3){
-                linesShape.vertices[i+0] = 1e5
-                linesShape.vertices[i+1] = 1e5
-                linesShape.vertices[i+2] = 1e5
+              for(var i = 0; i < 50; i++){
+                var x1 = cursor.x
+                var y1 = cursor.y
+                var z1 = cursor.z
+                var x2 = cursor.x
+                var y2 = cursor.y
+                var z2 = cursor.z
+                var a = [i / 50 * axisLength-axisLength/2, 0, 0,
+                     (i+1) / 50 * axisLength-axisLength/2, 0, 0]
+                var ar = Coordinates.GetShaderCoord(x1 + a[m%3],
+                                     y1 + a[(m+1)%3], z1 + a[(m+2)%3],
+                                     linesShape,renderer)
+                if(ar){
+                  linesShape.vertices[ct + 0] = -x1 - a[m%3]
+                  linesShape.vertices[ct + 1] = y1 + a[(m+1)%3]
+                  linesShape.vertices[ct + 2] = z1 + a[(m+2)%3]
+                  linesShape.vertices[ct + 3] = -x2 - a[(m%3)+3]
+                  linesShape.vertices[ct + 4] = y2 + a[((m+1)%3)+3]
+                  linesShape.vertices[ct + 5] = z2 + a[((m+2)%3)+3]
+                  
+                  for(var j=3;j--;){
+                    for(var k = 6; k--;){
+                      var idx = ct/6*24 + k*4
+                      colors[idx + 0] = red
+                      colors[idx + 1] = green
+                      colors[idx + 2] = blue
+                      colors[idx + 3] = 1
+                    }
+                  }
+                }else{
+                  linesShape.vertices[ct + 0] = 1e5
+                  linesShape.vertices[ct + 1] = 1e5
+                  linesShape.vertices[ct + 2] = 1e5
+                  linesShape.vertices[ct + 3] = 1e5
+                  linesShape.vertices[ct + 4] = 1e5
+                  linesShape.vertices[ct + 5] = 1e5
+                }
+                ct += 6
               }
             }
           }else{
@@ -754,8 +890,8 @@
       
       
       var homing = 100
-      var drag = 1.1
-      var grav = .05
+      var drag = 250
+      var grav = 10
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -797,6 +933,27 @@
               //shape.colorMix = 1
               renderer.Draw(shape)
             break
+            case 'smoke particles':
+              smoke = smoke.filter(v=>v.life>0)
+              var colors = shape.shader.datasets[0].optionalAttributes[0].value
+              for(var i = 0; i < shape.vertices.length; i += 3){
+                var idx = i/3
+                if(idx < smoke.length){
+                  shape.vertices[i+0] = smoke[idx].x += smoke[idx].vx
+                  shape.vertices[i+1] = smoke[idx].y += smoke[idx].vy
+                  shape.vertices[i+2] = smoke[idx].z += smoke[idx].vz
+                  smoke[idx].life -= .0005
+                  
+                  var cIdx = i/3*4
+                  var rgb = Coordinates.HSVToRGB(360/smoke.length*(smoke.length-idx)*.2,1,1)
+                  colors[cIdx+0] = rgb[0] / 256
+                  colors[cIdx+1] = rgb[1] / 256
+                  colors[cIdx+2] = rgb[2] / 256
+                  colors[cIdx+3] = .2 / smoke.length * idx
+                }
+              }
+              renderer.Draw(shape)
+            break
             case 'particles':
               for(var i = 0; i < shape.vertices.length; i += 3){
                 var j = i/3
@@ -813,7 +970,7 @@
                       var x2 = v.x
                       var y2 = v.y
                       var z2 = v.z
-                      d = 5+(Math.hypot(x2-x1, y2-y1, z2-z1))**3/1e4
+                      d = 2+(Math.hypot(x2-x1, y2-y1, z2-z1))**3/1e4
                       particles[j].vx += (x2-x1) / d * grav
                       particles[j].vy += (y2-y1) / d * grav
                       particles[j].vz += (z2-z1) / d * grav
@@ -863,6 +1020,28 @@
               //shape.yaw = t / 4
               renderer.Draw(shape)
             break
+            case 'lines':
+              renderer.Draw(shape)
+            break
+            case 'cursor bounding':
+              if(!document.pointerLockElement){
+                for(var i = 0;
+                     i < shape.vertices.length;
+                     i += shape.stride){
+                  var ls = (t/2%1)*cbSize+1+i/shape.stride*cbSize
+                  for(var j = 0; j < shape.stride; j += 3){
+                    var idx = i + j
+                    shape.vertices[idx+0] = shape.vstate[idx+0] = cbVerts[j + 0] * ls
+                    shape.vertices[idx+1] = shape.vstate[idx+1] = cbVerts[j + 1] * ls
+                    shape.vertices[idx+2] = shape.vstate[idx+2] = cbVerts[j + 2] * ls
+                  }
+                }
+                shape.x = cursor.x
+                shape.y = cursor.y
+                shape.z = cursor.z
+                renderer.Draw(shape)
+              }
+            break
             case 'test marker':
               renderer.Draw(shape)
             break
@@ -873,7 +1052,7 @@
                   var dx1 = v.x - ship.x
                   var dy1 = v.y - ship.y
                   var dz1 = v.z - ship.z
-                  d = 1+(Math.hypot(dx1, dy1, dz1)) ** 3 / 50
+                  d = 2+(Math.hypot(dx1, dy1, dz1)) ** 2.5 / 20
                   ship.vx += dx1 / d * grav
                   ship.vy += dy1 / d * grav
                   ship.vz += dz1 / d * grav
@@ -889,21 +1068,46 @@
               shape.x = ship.x += ship.vx /= shipDrag
               shape.y = ship.y += ship.vy /= shipDrag
               shape.z = ship.z += ship.vz /= shipDrag
-              renderer.Draw(shape)
+              d = Math.hypot(ship.vx, ship.vy, ship.vz)
+              if(d > .01 && Rn() < 1)
+                for(var n=0; n<5; n++){
+                  SpawnSmoke(ship.x - ship.vx/5*n,
+                             ship.y - ship.vy/5*n,
+                             ship.z - ship.vz/5*n)
+                }
+                
+              if(shipView){
+                renderer.x = -ship.x
+                renderer.y = -ship.y
+                renderer.z = -ship.z
+                renderer.yaw = -shape.yaw + Math.PI
+                renderer.pitch = shape.pitch
+              }else{
+                renderer.Draw(shape)
+              }
             break
             case 'target':
-              shape.shapeData.map((subShape, sIdx) => {
-                if(sIdx < targets.length){
-                  subShape.x = targets[sIdx].x - subShape.ox
-                  subShape.y = targets[sIdx].y - subShape.oy
-                  subShape.z = targets[sIdx].z - subShape.oz
-                }else{
-                  subShape.x = 1e5
-                  subShape.y = 1e5
-                  subShape.z = 1e5
-                }
-              })
+              if(0){
+                shape.shapeData.map((subShape, sIdx) => {
+                  if(sIdx < targets.length){
+                    subShape.x = targets[sIdx].x - subShape.ox
+                    subShape.y = targets[sIdx].y - subShape.oy
+                    subShape.z = targets[sIdx].z - subShape.oz
+                  }else{
+                    subShape.x = 1e5
+                    subShape.y = 1e5
+                    subShape.z = 1e5
+                  }
+                })
+              }else{
+                shape.x = targets[0].x
+                shape.y = targets[0].y
+                shape.z = targets[0].z
+              }
               renderer.Draw(shape)
+            break
+            case 'cube grid':
+              if(!shipView) renderer.Draw(shape)
             break
             case 'main':
               renderer.Draw(shape)
@@ -913,6 +1117,13 @@
             break
           }
         })
+        
+        if(shipView){
+          Coordinates.Overlay.ctx.globalAlpha = .5
+          Coordinates.Overlay.ctx.clearRect(0,0,w,h)
+          Coordinates.Overlay.ctx.drawImage(HUD,0,0,w,h)
+          Coordinates.Overlay.ctx.globalAlpha = 1
+        }
       }
       
     </script>
