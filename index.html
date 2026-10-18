@@ -6,12 +6,13 @@
     ✔ improved cursor
     ✔ misplaced / mass depleted indicator
          status bar
-         ⤷ mass meter
-         ⤷ level info
-         ⤷ help / hotkeys button
-         ⤷ launch, undo, reset buttons
-    target contact detection and level advancement
+         ✔  ⤷ launch, undo, reset buttons
+         ✔  ⤷ mass meter
+         ✔  ⤷ level info
+         ✔ ⤷ help / hotkeys button
     quick "axis-view" switching (make it the only option?)
+      OR multi-view display
+    target contact detection and level advancement
     predictive dashed "short path"
     death screen (ship has left the container)
     add / remove / delete blackholes
@@ -40,9 +41,38 @@
         overflow: hidden;
         font-family: Play;
       }
+      .modal{
+        position: fixed;
+        background: #011d;
+        z-index: 200;
+        height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        display: none;
+      }
+      hr{
+       line-height: 0;
+       height: 0;
+       margin: 0;
+       border-color: #666;
+      }
+      #hotkeys{
+        width: 500px;
+        color: #ff4;
+        background: #1484;
+        border-radius: 5px;
+        border: 1px solid #148a;
+        padding: 10px;
+        min-height: 500px;
+        top: 50%;
+        left: 50%;
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: none;
+        overflow-y: auto;
+      }
       #header, #footer{
         line-height: 32px;
-        height: 34px;
         font-size: 32px;
         padding: 0px;
         position: fixed;
@@ -50,12 +80,17 @@
         z-index: 100;
       }
       #header{
+        height: 34px;
         background: linear-gradient(-90deg, #444, #444, #333, #333, #111, #111, #111, #111);
         border-bottom: 1px solid #fff4;
       }
+      #footerControlCluster{
+        text-align: center;
+      }
       #footer{
+        height: 68px;
         background: linear-gradient(90deg, #444, #444, #333, #333, #111, #111, #111, #111);
-        top: calc(100vh - 34px);
+        top: calc(100vh - 68px);
         border-top: 1px solid #fff4;
       }
       #headerTitle{
@@ -66,6 +101,37 @@
         font-style: italic;
         font-weight: 900;
         text-shadow: 0px 0px 5px #f00;
+      }
+      .buttons:focus{
+        outline: none;
+      }
+      .buttons{
+        border-radius: 10px;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+      }
+      .closeButton{
+        background: #844;
+        color: #faa;
+        text-shadow: 2px 2px 2px #000;
+        width: 140px;
+        position: absolute;
+        border-top: 1px solid #f88;
+        border-left: 1px solid #f88;
+        border-right: 3px solid #600;
+        border-bottom: 3px solid #600;
+      }
+      #helpButton{
+        min-width: unset;
+        margin-left: 30px;
+        background: #597;
+        color: #0f8;
+        font-weight:900;
+        border-top: 3px #6f8 solid;
+        border-left: 3px solid #6f8;
+        border-right:3px solid #264;
+        border-bottom: 3px solid #264;
       }
       .massMeterContainer{
         width: 318px;
@@ -97,6 +163,7 @@
         border-radius: 5px;
         border-bottom: 1px solid #888;
         border-right: 1px solid #888;
+        text-align: left;
       }
       #massNumeric, #holeCount{
         color: #fa4;
@@ -139,69 +206,102 @@
     </style>
   </head>
   <body>
+    <div
+      class="modal"
+      id="dialogueScreen"
+    ></div>
     <div id="header">
       <div id="headerTitle">HOLEPUNCH 3D</div>
     </div>
+    <div id="hotkeys">
+      <button
+        class="buttons closeButton"
+        title="close window"
+        tabindex="0"
+        onclick="window.CloseModal()"
+        style="left: 300px;top:450px"
+        onkeydown="window.keysOnButton(event)"
+        autofocus="true"
+      >close [ESC]</button>
+      ESC        : close this window<br>
+      O            : toggle ship-camera mode<br>
+      H            : toggle HUD (in ship-camera mode)<br>
+      blah<br>
+      blah<br>
+    </div>
     <div id="footer">
-      <div class="footerElement" >
-        LEVEL
-        <div
-          id="levelName"
-          class="infoContent"
-        ></div>
+      <div id="footerControlCluster">
+        <div class="footerElement" >
+          LEVEL
+          <div
+            id="levelName"
+            class="infoContent"
+          ></div>
+        </div>
+        <button
+          class="footerButton"
+          id="launchButton"
+          onclick="window.Launch()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="Launch"
+        >
+          LAUNCH
+        </button>
+        <button
+          class="footerButton"
+          onclick="window.Reset()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="remove all black holes"
+        >
+          RESET
+        </button>
+        <button
+          class="footerButton"
+          onclick="window.Undo()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="undo last placement"
+        >
+          UNDO
+        </button>
+        <hr>
+        <span class="menuLabel">
+          MASS
+        </span>
+        <div class="footerElement massMeterContainer" >
+          <div
+            id="massMeter"
+            class="infoContent"
+          ></div>
+        </div>
+        <div class="footerElement" style="min-width: unset">
+          <div
+            class="infoContent"
+            id="massNumeric"
+          ></div>
+        </div>
+        <span class="menuLabel">
+          HOLES
+        </span>
+        <div class="footerElement holeCountContainer" style="min-width: unset" >
+          <div
+            id="holeCount"
+            class="infoContent"
+          ></div>
+        </div>
+        <button
+          class="footerButton"
+          id="helpButton"
+          onclick="window.ShowHotkeys()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="show hot keys & instructions"
+        >
+          ?
+        </button>
       </div>
-      <span class="menuLabel">
-        MASS
-      </span>
-      <div class="footerElement massMeterContainer" >
-        <div
-          id="massMeter"
-          class="infoContent"
-        ></div>
-      </div>
-      <div class="footerElement" style="min-width: unset">
-        <div
-          class="infoContent"
-          id="massNumeric"
-        ></div>
-      </div>
-      <span class="menuLabel">
-        HOLES
-      </span>
-      <div class="footerElement holeCountContainer" style="min-width: unset" >
-        <div
-          id="holeCount"
-          class="infoContent"
-        ></div>
-      </div>
-      <button
-        class="footerButton"
-        id="launchButton"
-        onclick="window.Launch()"
-        onmouseover="window.hovering = true"
-        onmouseout="window.hovering = false"
-        title="Launch"
-      >
-        LAUNCH
-      </button>
-      <button
-        class="footerButton"
-        onclick="window.Reset()"
-        onmouseover="window.hovering = true"
-        onmouseout="window.hovering = false"
-        title="remove all black holes"
-      >
-        RESET
-      </button>
-      <button
-        class="footerButton"
-        onclick="window.Undo()"
-        onmouseover="window.hovering = true"
-        onmouseout="window.hovering = false"
-        title="undo last placement"
-      >
-        UNDO
-      </button>
     </div>
     <script type="module">
 
@@ -225,9 +325,9 @@
       var w = c.width = renderer.c.width
       var h = c.height = renderer.c.height
       
-      //var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
+      var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
       //var refTexture = 'https://i.imgur.com/Ad8pyZy.mp4'
-      var refTexture = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/pathway_morning.jpg'
+      //var refTexture = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/pathway_morning.jpg'
       
       var showBackground = true
 
@@ -391,7 +491,11 @@
       ]
       var particleShader = await Coordinates.BasicShader(renderer, shaderOptions)
       
-
+      window.keysOnButton = e => {
+        if(e.keyCode == 27){
+          CloseModal()
+        }
+      }
 
       var shapes = []
 
@@ -836,6 +940,17 @@
         }
       }
       
+      window.ShowHotkeys = () => {
+        var el = document.querySelector('#dialogueScreen')
+        var contents = document.querySelector('#hotkeys').cloneNode(true)
+        el.style.display = 'block'
+        el.innerHTML = ''
+        contents.style.display = 'block'
+        el.appendChild(contents)
+        modalVisible = true
+        document.querySelectorAll('.closeButton')[0].focus()
+      }
+      
       const LevelReset = () => {
         document.querySelector('#launchButton').style.background='#f80'
         document.querySelector('#launchButton').style.color='#fff'
@@ -857,10 +972,12 @@
       var bhIdx, keys, keyTimers
       var ship, shipView, addingMass
       var launched, massAvailable, alive
-      var level, showHUD, unDid
+      var level, showHUD, unDid, modalVisible
+      var cameras
       
       const Init = () => {
         level = 1
+        modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
         keyTimers = Array(128).fill(false)
@@ -884,7 +1001,7 @@
         }
         
         window.onmousedown = e => {
-          if(!window.hovering &&
+          if(!window.hovering && !modalVisible &&
              e.button == 0 && renderer.cameraMode != 'fps') {
             if(alive && !launched) SpawnBlackHole()
           }
@@ -931,6 +1048,17 @@
         window.onmouseover = () => {
           hasMouse = true
         }
+        
+        cameras = [
+          {
+            x: 0,
+            y: 0,
+            z: 0,
+            roll: 0,
+            pitch: 0,
+            yaw: 0,
+          },
+        ]
       }
       Init()
       
@@ -992,18 +1120,26 @@
             targets = []
             SpawnTarget(100, 20, 50)
             //renderer.yaw = -.5
-            renderer.x = 0
-            renderer.y = 0
-            renderer.z = 40
-            renderer.yaw = 0
-            renderer.pitch = 0
-            renderer.roll = 0
+            
+            cameras[0].x = renderer.x = 0
+            cameras[0].y = renderer.y = 0
+            cameras[0].z = renderer.z = 40
+            cameras[0].roll = renderer.roll = 0
+            cameras[0].pitch = renderer.pitch = 0
+            cameras[0].yaw = renderer.yaw = 0
           break
         }
         
         levelNameEl.innerHTML = levelName
       }
       LoadLevel(level)
+      
+      window.CloseModal = () => {
+        var el = document.querySelector('#dialogueScreen')
+        el.innerHTML = ''
+        el.style.display = 'none'
+        modalVisible = false
+      }
 
       const ProcessScratchCanvas = () => {
       
@@ -1016,7 +1152,8 @@
           ctx.fillRect(mx-s/2,my-s/2,s,s)
           
           
-          if(!window.hovering && !document.pointerLockElement){
+          if(!window.hovering &&  !modalVisible &&
+              !document.pointerLockElement){
             var rx, ry, rz
             var fps = renderer.cameraMode == 'fps'
             var fac = 1/renderer.fov*100
@@ -1184,6 +1321,10 @@
         }
       }
       
+      Coordinates.Overlay.fit = 'cover'
+      Coordinates.Overlay.Resize()
+      
+      
       var homing = 100
       var drag = 1
       var grav = 10
@@ -1222,6 +1363,34 @@
           }
         }
         
+        if(shipView && showHUD){
+          Coordinates.Overlay.ctx.globalAlpha = alive ? .25 : .5
+          Coordinates.Overlay.ctx.clearRect(0,0,w,h)
+          Coordinates.Overlay.ctx.drawImage(alive ? HUD : HUD_dead,0,0,w,h)
+          Coordinates.Overlay.ctx.globalAlpha = 1
+        }
+        if(!alive){
+          Coordinates.Overlay.ctx.fillStyle = '#400c'
+          Coordinates.Overlay.ctx.fillRect(0,0,w,h)
+          var fs
+          Coordinates.Overlay.ctx.font = (fs=200) + 'px Play'
+          Coordinates.Overlay.ctx.strokeStyle = '#f00'
+          Coordinates.Overlay.ctx.fillStyle = '#800'
+          Coordinates.Overlay.ctx.textAlign = 'center'
+          Coordinates.Overlay.ctx.fillText('ded', w/2, h/2)
+          Coordinates.Overlay.ctx.lineWidth = 4
+          Coordinates.Overlay.ctx.strokeText('ded', w/2, h/2)
+
+          Coordinates.Overlay.ctx.font = (fs=100) + 'px Play'
+          Coordinates.Overlay.ctx.strokeStyle = '#f00'
+          Coordinates.Overlay.ctx.fillStyle = '#800'
+          Coordinates.Overlay.ctx.textAlign = 'center'
+          Coordinates.Overlay.ctx.fillText('hit spacebar to try again', w/2, h/2 + fs)
+          Coordinates.Overlay.ctx.lineWidth = 1
+          Coordinates.Overlay.ctx.strokeText('hit spacebar to try again', w/2, h/2 + fs)
+        }
+
+        Coordinates.Overlay.ctx.drawImage(renderer.c, w-w/4, h/2-h/8, w/4, h/4)
         renderer.Clear()
         shapes.forEach(shape => {
           switch(shape.name){
@@ -1367,10 +1536,11 @@
               renderer.Draw(shape)
             break
             case 'lines':
-              renderer.Draw(shape)
+              //renderer.Draw(shape)
             break
             case 'cursor bounding':
-              if(!window.hovering && !document.pointerLockElement){
+              if(!window.hovering &&  !modalVisible &&
+                  !document.pointerLockElement){
                 for(var i = 0;
                      i < shape.vertices.length;
                      i += shape.stride){
@@ -1385,7 +1555,7 @@
                 shape.x = cursor.x
                 shape.y = cursor.y
                 shape.z = cursor.z
-                renderer.Draw(shape)
+                //renderer.Draw(shape)
               }
             break
             case 'test marker':
@@ -1513,33 +1683,6 @@
           }
           misplacedShape.alpha = diff/2
           renderer.Draw(misplacedShape)
-        }
-        
-        if(shipView && showHUD){
-          Coordinates.Overlay.ctx.globalAlpha = alive ? .25 : .5
-          Coordinates.Overlay.ctx.clearRect(0,0,w,h)
-          Coordinates.Overlay.ctx.drawImage(alive ? HUD : HUD_dead,0,0,w,h)
-          Coordinates.Overlay.ctx.globalAlpha = 1
-        }
-        if(!alive){
-          Coordinates.Overlay.ctx.fillStyle = '#400c'
-          Coordinates.Overlay.ctx.fillRect(0,0,w,h)
-          var fs
-          Coordinates.Overlay.ctx.font = (fs=200) + 'px Play'
-          Coordinates.Overlay.ctx.strokeStyle = '#f00'
-          Coordinates.Overlay.ctx.fillStyle = '#800'
-          Coordinates.Overlay.ctx.textAlign = 'center'
-          Coordinates.Overlay.ctx.fillText('ded', w/2, h/2)
-          Coordinates.Overlay.ctx.lineWidth = 4
-          Coordinates.Overlay.ctx.strokeText('ded', w/2, h/2)
-
-          Coordinates.Overlay.ctx.font = (fs=100) + 'px Play'
-          Coordinates.Overlay.ctx.strokeStyle = '#f00'
-          Coordinates.Overlay.ctx.fillStyle = '#800'
-          Coordinates.Overlay.ctx.textAlign = 'center'
-          Coordinates.Overlay.ctx.fillText('hit spacebar to try again', w/2, h/2 + fs)
-          Coordinates.Overlay.ctx.lineWidth = 1
-          Coordinates.Overlay.ctx.strokeText('hit spacebar to try again', w/2, h/2 + fs)
         }
         if(unDid) {
           bhIdx--
