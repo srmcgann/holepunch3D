@@ -368,7 +368,7 @@
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .2}},
+        {lighting: {type: 'ambientLight', value: 1}},
         { uniform: {
           type: 'phong',
           value: 0
@@ -536,17 +536,24 @@
       var cbVerts
       var cbSize = 1
       var geoOptions = {
-        shapeType: 'dodecahedron',
-        subs: 2,
-        sphereize: 1,
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/axisMarker.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/axisMarker.png',
         name: 'cursor bounding',
-        disableDepthTest: true,
+        colorMix: 0,
+        scaleX: 300,
+        scaleY: 300,
+        scaleZ: 300,
+        colorMix: 0,
+        //subs: 2,
+        //sphereize: 1,
+        disableDepthTest: false,
         alpha: .5,
-        size: 10,
-        colorMix: .025,
-        color: 0xff8800,
+        //size: 10,
+        //color: 0xff8800,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        /*
         cbVerts = structuredClone(geometry.vertices)
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
           for(var i = 0; i < res.vertices.length; i+= res.stride){
@@ -563,8 +570,11 @@
             }
           }
           shapes.push(res)
-          await cursorBoundingShader.ConnectGeometry(geometry)
+          await cursorBoundingShader.ConnectGeometry(res)
         })
+        */
+        shapes.push(geometry)
+        await cursorBoundingShader.ConnectGeometry(geometry)
       })
 
       
@@ -1090,7 +1100,7 @@
         shipShape.z = 0
         shipShape.roll = 0
         shipShape.pitch = 0
-        shipShape.yaw = 0
+        shipShape.yaw = Math.PI
         
         ship = {
           x: 0,
@@ -1104,7 +1114,7 @@
           vecz: 0,
           vecRoll: 0,
           vecPitch: 0,
-          vecYaw: 0,
+          vecYaw: Math.PI,
         }
         
         renderer.useKeys = true
@@ -1306,6 +1316,21 @@
         }
       }
       
+      const BlackholeFunc = (x1, y1, z1, vx, vy, vz) => {
+          blackholes.forEach((v, i) => {
+            if(v.x != 1e5){
+              var dx1 = v.x - x1
+              var dy1 = v.y - y1
+              var dz1 = v.z - z1
+              d = 2+(Math.hypot(dx1, dy1, dz1)) ** 2.5 / 20
+              vx += dx1 / d * grav
+              vy += dy1 / d * grav
+              vz += dz1 / d * grav
+            }
+          })
+          return { x1, y1, z1, vx, vy, vz }
+      }
+      
       window.Reset = () => {
         if(!launched) InitBlackHoles()
       }
@@ -1390,7 +1415,7 @@
           Coordinates.Overlay.ctx.strokeText('hit spacebar to try again', w/2, h/2 + fs)
         }
 
-        Coordinates.Overlay.ctx.drawImage(renderer.c, w-w/4, h/2-h/8, w/4, h/4)
+        //Coordinates.Overlay.ctx.drawImage(renderer.c, w-w/4, h/2-h/8, w/4, h/4)
         renderer.Clear()
         shapes.forEach(shape => {
           switch(shape.name){
@@ -1536,11 +1561,80 @@
               renderer.Draw(shape)
             break
             case 'lines':
-              //renderer.Draw(shape)
+              var colors = shape.shader.datasets[0].optionalAttributes[0].value
+              for(var i = 0; i < shape.vertices.length; i+=6){
+                var idx = i/6
+                if(0)if(idx < iLc - 1e3){ // optionally omit the axis lines
+                  shape.vertices[i+0] = 1e5
+                  shape.vertices[i+1] = 1e5
+                  shape.vertices[i+2] = 1e5
+                  shape.vertices[i+3] = 1e5
+                  shape.vertices[i+4] = 1e5
+                  shape.vertices[i+5] = 1e5
+                }
+              }
+              var x1 = ship.x
+              var y1 = ship.y
+              var z1 = ship.z
+              var el = shapes.filter(v=>v.name=='ship')[0]
+              var vx = ship.vx
+              var vy = ship.vy
+              var vz = ship.vz
+              var ptch = -el.pitch
+              var yw = el.yaw
+              for(var j = 0; j < 6e3; j += 6){
+                var idx = j + shape.vertices.length - 6e3
+                if(j < 6*200){
+                  var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
+                  x1 = ar.x1
+                  y1 = ar.y1
+                  z1 = ar.z1
+                  vx = ar.vx
+                  vy = ar.vy
+                  vz = ar.vz
+                  var x2 = x1 + vx
+                  var y2 = y1 + vy
+                  var z2 = z1 + vz
+
+                  x2 = x1 + vx
+                  y2 = y1 + vy
+                  z2 = z1 + vz
+                  shape.vertices[idx+0] = -x1
+                  shape.vertices[idx+1] = y1
+                  shape.vertices[idx+2] = z1
+                  shape.vertices[idx+3] = -x2
+                  shape.vertices[idx+4] = y2
+                  shape.vertices[idx+5] = z2
+                  
+                  x1 = x2
+                  y1 = y2
+                  z1 = z2
+                  
+                  var red = 1
+                  var green = 0
+                  var blue = 0
+                  for(var m = 4; m--;){
+                    var idx2 = idx/3*12 + m*4
+                    colors[idx2 + 0] = red
+                    colors[idx2 + 1] = green
+                    colors[idx2 + 2] = blue
+                    colors[idx2 + 3] = 1
+                  }
+                }else{
+                  shape.vertices[idx+0] = 1e5
+                  shape.vertices[idx+1] = 1e5
+                  shape.vertices[idx+2] = 1e5
+                  shape.vertices[idx+3] = 1e5
+                  shape.vertices[idx+4] = 1e5
+                  shape.vertices[idx+5] = 1e5
+                }
+              }
+              renderer.Draw(shape)
             break
             case 'cursor bounding':
               if(!window.hovering &&  !modalVisible &&
-                  !document.pointerLockElement){
+                  !document.pointerLockElement && alive && !launched){
+                  /*
                 for(var i = 0;
                      i < shape.vertices.length;
                      i += shape.stride){
@@ -1552,10 +1646,11 @@
                     shape.vertices[idx+2] = shape.vstate[idx+2] = cbVerts[j + 2] * ls
                   }
                 }
+                */
                 shape.x = cursor.x
                 shape.y = cursor.y
                 shape.z = cursor.z
-                //renderer.Draw(shape)
+                renderer.Draw(shape)
               }
             break
             case 'test marker':
@@ -1564,18 +1659,13 @@
             case 'ship':
               var shipDrag = 1.000001
               if(launched && alive){
-                blackholes.forEach((v, i) => {
-                  if(v.x != 1e5){
-                    var dx1 = v.x - ship.x
-                    var dy1 = v.y - ship.y
-                    var dz1 = v.z - ship.z
-                    d = 2+(Math.hypot(dx1, dy1, dz1)) ** 2.5 / 20
-                    ship.vx += dx1 / d * grav
-                    ship.vy += dy1 / d * grav
-                    ship.vz += dz1 / d * grav
-                  }
-                })
-                
+                var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
+                ship.x = ar.x1
+                ship.y = ar.y1
+                ship.z = ar.z1
+                ship.vx = ar.vx
+                ship.vy = ar.vy
+                ship.vz = ar.vz
                 var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
                 var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
                 
