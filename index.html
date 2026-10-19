@@ -2,6 +2,8 @@
   link https://notoriousbfg.com/hole-punch
   
   to do:
+    fix spatial placement tool
+      - sliding components with reference shapes
     ✔ new blackhole sprite, suitable for size/mass adjustments
     ✔ improved cursor
     ✔ misplaced / mass depleted indicator
@@ -367,12 +369,43 @@
       ]
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
+
+      var colors = []
+      var len = 2564*3 * 3
+      Array(len).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/len*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: 1}},
+        {lighting: {type: 'ambientLight', value: .1}},
         { uniform: {
           type: 'phong',
-          value: 0
+          value: .05
         } },
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: colors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            addInColor = attribCols;
+          `,
+        }},
       ]
       var cursorBoundingShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
@@ -537,44 +570,81 @@
       var cbSize = 1
       var geoOptions = {
         shapeType: 'obj',
-        url: 'https://srmcgann.github.io/holepunch3D/axisMarker.obj',
-        map: 'https://srmcgann.github.io/holepunch3D/axisMarker.png',
-        name: 'cursor bounding',
+        url: 'https://srmcgann.github.io/holepunch3D/axis_marker_with_spatial_references.obj?2',
+        //map: 'https://srmcgann.github.io/holepunch3D/axisMarker.png',
+        name: 'axis marker',
         colorMix: 0,
-        scaleX: 300,
-        scaleY: 300,
-        scaleZ: 300,
-        colorMix: 0,
+        scaleX: 1e3,
+        scaleY: 1e3,
+        scaleZ: 1e3,
         //subs: 2,
         //sphereize: 1,
-        disableDepthTest: false,
-        alpha: .5,
+        disableDepthTest: true,
+        alpha: 1,
         //size: 10,
-        //color: 0xff8800,
+        colorMix: 0,
+        color: 0xff0000,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-        /*
-        cbVerts = structuredClone(geometry.vertices)
-        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
-          for(var i = 0; i < res.vertices.length; i+= res.stride){
-            var ls = 1 + i/res.stride*cbSize
-            for(var j = 0; j < res.stride; j+=3){
-              var idx = j + i
-              x = res.vertices[idx+0] *= ls
-              y = res.vertices[idx+1] *= ls
-              z = res.vertices[idx+2] *= ls
-              //console.log(x,y,z)
-              res.vstate[idx+0] *= ls
-              res.vstate[idx+1] *= ls
-              res.vstate[idx+2] *= ls
+        Coordinates.ShapeFromArray(geometry,
+              [[0,0,0],[0,0,0],[0,0,0]]).then(async res => {
+          //res.cullFace = 'back'
+          res.colorMix = 0
+          res.alpha = .2
+          res.shapeData.map((subShape, sIdx) => {
+            switch(sIdx){
+              case 0:
+                subShape.yaw = 0
+                subShape.pitch = 0
+                subShape.roll = 0
+              break
+              case 1:
+                subShape.yaw = 0
+                subShape.pitch = 0
+                subShape.roll = Math.PI/2
+              break
+              case 2:
+                subShape.yaw = Math.PI/2
+                subShape.pitch = 0
+                subShape.roll = 0
+              break
             }
-          }
+          })
           shapes.push(res)
           await cursorBoundingShader.ConnectGeometry(res)
+
+          var colors = res.shader.datasets[0].optionalAttributes[0].value
+          var red, green, blue
+          for(var i = 0; i < 3; i ++){
+            switch(i){
+              case 0:
+                red   = 1
+                green = 0
+                blue  = 0
+              break
+              case 1:
+                red   = 1
+                green = 1
+                blue  = 0
+              break
+              case 2:
+                red   = 0
+                green = 0
+                blue  = 1
+              break
+            }
+            for(var j = 0; j < res.stride; j ++){
+              var idx = (j + i * res.stride) / 3 * 4
+              colors[idx + 0] = red
+              colors[idx + 1] = green
+              colors[idx + 2] = blue
+              colors[idx + 3] = 1
+            }
+          }
+
         })
-        */
-        shapes.push(geometry)
-        await cursorBoundingShader.ConnectGeometry(geometry)
+        //shapes.push(geometry)
+        //await cursorBoundingShader.ConnectGeometry(geometry)
       })
 
       
@@ -735,9 +805,9 @@
       var cursor
       var geoOptions = {
         shapeType: 'sprite',
-        map: 'https://srmcgann.github.io/Coordinates/resources/stars/star1.png',
+        map: 'https://srmcgann.github.io/Coordinates/resources/stars/star6.png',
         name: 'cursor',
-        size: 20,
+        size: 100,
         colorMix: 0,
         disableDepthTest: true,
       }
@@ -813,7 +883,7 @@
         shapeType: 'sprite',
         map: 'https://srmcgann.github.io/holepunch3D/misplaced.png?2',
         name: 'misplaced',
-        //disableDepthTest: true,
+        disableDepthTest: true,
         scaleY: -1,
         size: 25,
         colorMix: 0,
@@ -821,6 +891,25 @@
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         misplacedVerts = structuredClone(geometry.vertices)
         misplacedShape = geometry
+      })
+      
+      var tempCube
+      var geoOptions = {
+        shapeType: 'cube',
+        subs: -1,
+        name: 'temp cube',
+        size: 2e3 *.866,
+      }	
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        Coordinates.ShapeToLines(geometry, {
+          color: 0xff8800,
+          alpha: .8,
+          penumbra: .3,
+          size: 100,
+          closePaths: false,
+        }).then(res => {
+          tempCube = res.shape
+        })
       })
       
       var iTargc = 10
@@ -839,7 +928,7 @@
         shapeType: 'sprite',
         map: 'https://srmcgann.github.io/holepunch3D/target.png',
         name: 'target',
-        size: 50,
+        size: 25,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -919,34 +1008,44 @@
       var misplaced = {
         timer: 0, x: 1e5, y: 1e5, z: 1e5
       }
-      const SpawnBlackHole = () => {
-        if(massAvailable >= 10){
-          addingMass = true
-          blackholes[bhIdx].x = cursor.x
-          blackholes[bhIdx].y = cursor.y
-          blackholes[bhIdx].z = cursor.z
-          blackholes[bhIdx].mass = 10
-          massAvailable -= 10
+      const SpawnBlackHole = (x=0,y=0,z=0, mass=0) => {
+        if(mass){
+          blackholes[bhIdx].x = x
+          blackholes[bhIdx].y = y
+          blackholes[bhIdx].z = z
+          blackholes[bhIdx].mass = mass
         }else{
-          misplaced.timer = renderer.frameCount/60 + 1
-          misplaced.x = cursor.x
-          misplaced.y = cursor.y
-          misplaced.z = cursor.z
+          if(massAvailable >= 10){
+            addingMass = true
+            blackholes[bhIdx].x = cursor.x
+            blackholes[bhIdx].y = cursor.y
+            blackholes[bhIdx].z = cursor.z
+            blackholes[bhIdx].mass = 10
+            massAvailable -= 10
+          }else{
+            misplaced.timer = renderer.frameCount/60 + 1
+            misplaced.x = cursor.x
+            misplaced.y = cursor.y
+            misplaced.z = cursor.z
+          }
         }
       }
       
       window.Launch = () => {
-        UnloadFPSControls()
-        if(!launched){
-          launched = true
-          document.querySelector('#launchButton').style.background='#800'
-          document.querySelector('#launchButton').style.color='#f88'
-          document.querySelector('#launchButton').innerHTML = 'ABORT'
-          document.querySelectorAll('.footerButton').forEach(el => {
-            if(el.id != 'launchButton') el.style.display = 'none'
-          })
-        }else{
-          LevelReset()
+        if(blackholes.filter(v=>v.x!=1e5).length ||
+             Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
+          UnloadFPSControls()
+          if(!launched){
+            launched = true
+            document.querySelector('#launchButton').style.background='#800'
+            document.querySelector('#launchButton').style.color='#f88'
+            document.querySelector('#launchButton').innerHTML = 'ABORT'
+            document.querySelectorAll('.footerButton').forEach(el => {
+              if(el.id != 'launchButton') el.style.display = 'none'
+            })
+          }else{
+            LevelReset()
+          }
         }
       }
       
@@ -983,10 +1082,11 @@
       var ship, shipView, addingMass
       var launched, massAvailable, alive
       var level, showHUD, unDid, modalVisible
-      var cameras
+      var cameras, predictiveLength
       
       const Init = () => {
         level = 1
+        predictiveLength = 500
         modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
@@ -1011,7 +1111,7 @@
         }
         
         window.onmousedown = e => {
-          if(!window.hovering && !modalVisible &&
+          if(AxisMarkersVisible() &&
              e.button == 0 && renderer.cameraMode != 'fps') {
             if(alive && !launched) SpawnBlackHole()
           }
@@ -1030,7 +1130,7 @@
           if(e.keyCode == 72) showHUD = !showHUD
           if(e.keyCode == 32) {
             if(alive && !launched){
-              if(blackholes.filter(v=>v.x!=1e5).length) Launch()
+              Launch()
             }else{
               LevelReset()
             }
@@ -1050,7 +1150,8 @@
           }
         }
         window.onmousewheel = e => {
-          cursorDist -= e.deltaY / 100
+          cursorDist -= e.deltaY / 25
+          cursorDist = Math.min(210, Math.max(-210, cursorDist))
         }
         window.onmouseout = () => {
           hasMouse = false
@@ -1090,7 +1191,10 @@
       var blackholes
       const LoadLevel = level => {
       
+        var initShipX, initShipY, initShipZ
+        var initShipVx, initShipVy, initShipVz
         smoke = []
+        bhIdx = 0
         unDid = false
         window.hovering = false
         InitBlackHoles()
@@ -1102,43 +1206,66 @@
         shipShape.pitch = 0
         shipShape.yaw = Math.PI
         
-        ship = {
-          x: 0,
-          y: 0,
-          z: 0,
-          vx: 0,
-          vy: 0,
-          vz: 0,
-          vecx: 0,
-          vecy: 0,
-          vecz: 0,
-          vecRoll: 0,
-          vecPitch: 0,
-          vecYaw: Math.PI,
-        }
+        SpawnBlackHole(0,20,0,5)
+        bhIdx++
+        bhIdx%=iPc
         
         renderer.useKeys = true
         alive = true
         launched = false
         addingMass = false
-        bhIdx = 0
         shipView = false
+        targets = []
+        
         switch(level) {
           case 1:
+            //LoadFPS()
             levelName = 'FLIGHT TRAINING'
             cursorDist = 20
-            targets = []
-            SpawnTarget(100, 20, 50)
-            //renderer.yaw = -.5
+
+            SpawnTarget(100, 0, 0)
+            initShipX = -100
+            initShipY = 0
+            initShipZ = 0
+            
+            initShipVx = 1 
+            initShipVy = 0
+            initShipVz = 0
             
             cameras[0].x = renderer.x = 0
             cameras[0].y = renderer.y = 0
-            cameras[0].z = renderer.z = 40
+            cameras[0].z = renderer.z = 100
             cameras[0].roll = renderer.roll = 0
             cameras[0].pitch = renderer.pitch = 0
             cameras[0].yaw = renderer.yaw = 0
           break
         }
+        
+        ship = {
+          x: initShipX,
+          y: initShipY,
+          z: initShipZ,
+          vx: initShipVx,
+          vy: initShipVy,
+          vz: initShipVz,
+          vecx: 0,
+          vecy: 0,
+          vecz: 0,
+          vecRoll: 0,
+          vecPitch: -Math.acos(-initShipVy /
+                          (Math.hypot(initShipVx,
+                           initShipVy,
+                           initShipVz))+.0001) + Math.PI/2,
+          vecYaw: Math.atan2(initShipVx, initShipVz)+Math.PI,
+        }
+
+        var shipShape = shapes.filter(v=>v.name=='ship')[0]
+        shipShape.x = ship.x
+        shipShape.y = ship.y
+        shipShape.z = ship.z
+        shipShape.yaw = ship.vecYaw
+        shipShape.pitch = ship.vecPitch
+        shipShape.roll = ship.vecRoll
         
         levelNameEl.innerHTML = levelName
       }
@@ -1149,6 +1276,11 @@
         el.innerHTML = ''
         el.style.display = 'none'
         modalVisible = false
+      }
+      
+      const AxisMarkersVisible = () => {
+        return !window.hovering &&  !modalVisible &&
+          !document.pointerLockElement && alive && !launched
       }
 
       const ProcessScratchCanvas = () => {
@@ -1162,8 +1294,7 @@
           ctx.fillRect(mx-s/2,my-s/2,s,s)
           
           
-          if(!window.hovering &&  !modalVisible &&
-              !document.pointerLockElement){
+          if(AxisMarkersVisible()){
             var rx, ry, rz
             var fps = renderer.cameraMode == 'fps'
             var fac = 1/renderer.fov*100
@@ -1221,6 +1352,10 @@
 
             }
             
+            cursor.x = Math.min(1e3, Math.max(-1e3, cursor.x))
+            cursor.y = Math.min(1e3, Math.max(-1e3, cursor.y))
+            cursor.z = Math.min(1e3, Math.max(-1e3, cursor.z))
+            
             /*
             var shape = shapes.filter(v=>v.name == 'test marker')
             if(shape.length){
@@ -1244,74 +1379,6 @@
               shape.yaw = -renderer.yaw
             }
             */
-            
-            var ct = 0
-            var colors = linesShape.shader.datasets[0].optionalAttributes[0].value
-            for(var m = 0; m < 3; m++){
-              var red, green, blue
-              switch(m){
-                case 0:
-                  red = 1
-                  green = 0
-                  blue = 0
-                break
-                case 1:
-                  red = 0
-                  green = 1
-                  blue = 0
-                break
-                case 2:
-                  red = 0
-                  green = 0
-                  blue = 1
-                break
-              }
-              for(var i = 0; i < 50; i++){
-                var x1 = cursor.x
-                var y1 = cursor.y
-                var z1 = cursor.z
-                var x2 = cursor.x
-                var y2 = cursor.y
-                var z2 = cursor.z
-                var a = [i / 50 * axisLength-axisLength/2, 0, 0,
-                     (i+1) / 50 * axisLength-axisLength/2, 0, 0]
-                var ar = Coordinates.GetShaderCoord(x1 + a[m%3],
-                                     y1 + a[(m+1)%3], z1 + a[(m+2)%3],
-                                     linesShape,renderer)
-                if(ar){
-                  linesShape.vertices[ct + 0] = -x1 - a[m%3]
-                  linesShape.vertices[ct + 1] = y1 + a[(m+1)%3]
-                  linesShape.vertices[ct + 2] = z1 + a[(m+2)%3]
-                  linesShape.vertices[ct + 3] = -x2 - a[(m%3)+3]
-                  linesShape.vertices[ct + 4] = y2 + a[((m+1)%3)+3]
-                  linesShape.vertices[ct + 5] = z2 + a[((m+2)%3)+3]
-                  
-                  for(var j=3;j--;){
-                    for(var k = 6; k--;){
-                      var idx = ct/6*24 + k*4
-                      colors[idx + 0] = red
-                      colors[idx + 1] = green
-                      colors[idx + 2] = blue
-                      colors[idx + 3] = 1
-                    }
-                  }
-                }else{
-                  linesShape.vertices[ct + 0] = 1e5
-                  linesShape.vertices[ct + 1] = 1e5
-                  linesShape.vertices[ct + 2] = 1e5
-                  linesShape.vertices[ct + 3] = 1e5
-                  linesShape.vertices[ct + 4] = 1e5
-                  linesShape.vertices[ct + 5] = 1e5
-                }
-                ct += 6
-              }
-            }
-          }else{
-            for(i = 0; i < linesShape.vertices.length; i += 3){
-              linesShape.vertices[i+0] = 1e5
-              linesShape.vertices[i+1] = 1e5
-              linesShape.vertices[i+2] = 1e5
-            }
           }
         }
       }
@@ -1322,10 +1389,10 @@
               var dx1 = v.x - x1
               var dy1 = v.y - y1
               var dz1 = v.z - z1
-              d = 2+(Math.hypot(dx1, dy1, dz1)) ** 2.5 / 20
-              vx += dx1 / d * grav
-              vy += dy1 / d * grav
-              vz += dz1 / d * grav
+              d = 1+(1+Math.hypot(dx1, dy1, dz1)) ** 3 / 10
+              vx += dx1 / d * grav * v.mass
+              vy += dy1 / d * grav * v.mass
+              vz += dz1 / d * grav * v.mass
             }
           })
           return { x1, y1, z1, vx, vy, vz }
@@ -1352,7 +1419,7 @@
       
       var homing = 100
       var drag = 1
-      var grav = 10
+      var grav = .25
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -1425,7 +1492,7 @@
               shape.z = -renderer.z
               //shape.color = 0xffffff
               //shape.colorMix = 1
-              renderer.Draw(shape)
+              //renderer.Draw(shape)
             break
             case 'smoke particles':
               var colors = shape.shader.datasets[0].optionalAttributes[0].value
@@ -1492,8 +1559,8 @@
             case 'blackhole':
               if(addingMass){
                 if(massAvailable > 0) {
-                  massAvailable --
-                  blackholes[bhIdx].mass ++
+                  massAvailable -= .1
+                  blackholes[bhIdx].mass += .1
                 }
               }
               var disk = shapes.filter(v=>v.name =='blackhole disk')[0]
@@ -1562,17 +1629,6 @@
             break
             case 'lines':
               var colors = shape.shader.datasets[0].optionalAttributes[0].value
-              for(var i = 0; i < shape.vertices.length; i+=6){
-                var idx = i/6
-                if(0)if(idx < iLc - 1e3){ // optionally omit the axis lines
-                  shape.vertices[i+0] = 1e5
-                  shape.vertices[i+1] = 1e5
-                  shape.vertices[i+2] = 1e5
-                  shape.vertices[i+3] = 1e5
-                  shape.vertices[i+4] = 1e5
-                  shape.vertices[i+5] = 1e5
-                }
-              }
               var x1 = ship.x
               var y1 = ship.y
               var z1 = ship.z
@@ -1582,9 +1638,9 @@
               var vz = ship.vz
               var ptch = -el.pitch
               var yw = el.yaw
-              for(var j = 0; j < 6e3; j += 6){
-                var idx = j + shape.vertices.length - 6e3
-                if(j < 6*200){
+              for(var j = 0; j < shape.vertices.length; j += 6){
+                if(j < 6*predictiveLength){
+                  var idx = j
                   var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
                   x1 = ar.x1
                   y1 = ar.y1
@@ -1610,30 +1666,24 @@
                   y1 = y2
                   z1 = z2
                   
-                  var red = 1
-                  var green = 0
-                  var blue = 0
-                  for(var m = 4; m--;){
-                    var idx2 = idx/3*12 + m*4
+                  d = Math.hypot(vx, vy, vz)
+                  var rgb = Coordinates.HSVToRGB(0,0,.25+Math.min(.75,d/50))
+                  var red = rgb[0] / 256
+                  var green = rgb[1] / 256
+                  var blue = rgb[2] / 256
+                  for(var m = 2*3; m--;){
+                    var idx2 = idx/6*8*3 + m*4
                     colors[idx2 + 0] = red
                     colors[idx2 + 1] = green
                     colors[idx2 + 2] = blue
                     colors[idx2 + 3] = 1
                   }
-                }else{
-                  shape.vertices[idx+0] = 1e5
-                  shape.vertices[idx+1] = 1e5
-                  shape.vertices[idx+2] = 1e5
-                  shape.vertices[idx+3] = 1e5
-                  shape.vertices[idx+4] = 1e5
-                  shape.vertices[idx+5] = 1e5
                 }
               }
               renderer.Draw(shape)
             break
-            case 'cursor bounding':
-              if(!window.hovering &&  !modalVisible &&
-                  !document.pointerLockElement && alive && !launched){
+            case 'axis marker':
+              if(AxisMarkersVisible()){
                   /*
                 for(var i = 0;
                      i < shape.vertices.length;
@@ -1647,9 +1697,31 @@
                   }
                 }
                 */
-                shape.x = cursor.x
-                shape.y = cursor.y
-                shape.z = cursor.z
+                if(1)shape.shapeData.map((subShape, sIdx) => {
+                  switch(sIdx){
+                    case 0:
+                      subShape.x = 0
+                      subShape.y = Math.min(1e3,
+                             Math.max(-1e3, cursor.y))
+                      subShape.z =  Math.min(1e3,
+                             Math.max(-1e3, cursor.z))
+                    break
+                    case 1:
+                      subShape.x = Math.min(1e3,
+                             Math.max(-1e3, cursor.x))
+                      subShape.y = 0
+                      subShape.z = Math.min(1e3,
+                             Math.max(-1e3, cursor.z))
+                    break
+                    case 2:
+                      subShape.x = Math.min(1e3,
+                             Math.max(-1e3, cursor.x))
+                      subShape.y = Math.min(1e3,
+                             Math.max(-1e3, cursor.y))
+                      subShape.z = 0
+                    break
+                  }
+                })
                 renderer.Draw(shape)
               }
             break
@@ -1658,73 +1730,74 @@
             break
             case 'ship':
               var shipDrag = 1.000001
-              if(launched && alive){
-                var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
-                ship.x = ar.x1
-                ship.y = ar.y1
-                ship.z = ar.z1
-                ship.vx = ar.vx
-                ship.vy = ar.vy
-                ship.vz = ar.vz
-                var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
-                var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
+              if(launched){
+                if(alive){
+                  var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
+                  ship.x = ar.x1
+                  ship.y = ar.y1
+                  ship.z = ar.z1
+                  ship.vx = ar.vx
+                  ship.vy = ar.vy
+                  ship.vz = ar.vz
+                  var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
+                  var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
+                  
+                  shape.yaw = p1
+                  shape.pitch = p2
+                }         
                 
-                shape.yaw = p1
-                shape.pitch = p2
-              }         
-              
-              if(alive){
-                shape.x = ship.x += ship.vx
-                shape.y = ship.y += ship.vy
-                shape.z = ship.z += ship.vz
-              }
-              ship.vx /= drag
-              ship.vy /= drag
-              ship.vz /= drag
-              if(ship.x > 1e3 || ship.x < -1e3 ||
-                 ship.y > 1e3 || ship.y < -1e3 ||
-                 ship.z > 1e3 || ship.z < -1e3){
-                 alive = false
-                 renderer.useKeys = false
-                 //shipView = false
-              }
-              d = Math.hypot(ship.vx, ship.vy, ship.vz)
-              if(alive && d > .01 && Rn() < 1)
-                console.log(alive)
-                x = ship.vx / d * 15
-                y = ship.vy / d * 15
-                z = ship.vz / d * 15
-                for(var n=0; n<5; n++){
-                  SpawnSmoke(
-                             ship.x - ship.vx/5*n - x,
-                             ship.y - ship.vy/5*n - y,
-                             ship.z - ship.vz/5*n - z )
+                if(alive && launched){
+                  shape.x = ship.x += ship.vx
+                  shape.y = ship.y += ship.vy
+                  shape.z = ship.z += ship.vz
                 }
-                
-              if(shipView){
-                var shipCamDist = 100
-                var shipCamTracking = 12
-                var vecx = 0
-                var vecy = 0
-                var vecz = shipCamDist
-                ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
-                p = Math.atan2(vecy, vecz) + shape.pitch + .5
-                d = Math.hypot(vecy, vecz)
-                vecy = S(p) * d
-                vecz = C(p) * d
-                ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
-                p = Math.atan2(vecx, vecz) + shape.yaw
-                d = Math.hypot(vecx, vecz)
-                vecx = S(p) * d
-                vecz = C(p) * d
-                ship.vecx += (vecx - ship.vecx) / shipCamTracking
-                ship.vecy += (vecy - ship.vecy) / shipCamTracking
-                ship.vecz += (vecz - ship.vecz) / shipCamTracking
-                renderer.x = -ship.x - ship.vecx
-                renderer.y = -ship.y - ship.vecy + 40
-                renderer.z = -ship.z - ship.vecz
-                renderer.yaw = -shape.yaw + Math.PI
-                renderer.pitch = shape.pitch
+                ship.vx /= drag
+                ship.vy /= drag
+                ship.vz /= drag
+                if(ship.x > 1e3 || ship.x < -1e3 ||
+                   ship.y > 1e3 || ship.y < -1e3 ||
+                   ship.z > 1e3 || ship.z < -1e3){
+                   alive = false
+                   renderer.useKeys = false
+                   //shipView = false
+                }
+                d = Math.hypot(ship.vx, ship.vy, ship.vz)
+                if(alive && d > .01 && Rn() < 1)
+                  x = ship.vx / d * 15
+                  y = ship.vy / d * 15
+                  z = ship.vz / d * 15
+                  for(var n=0; n<5; n++){
+                    SpawnSmoke(
+                               ship.x - ship.vx/5*n - x,
+                               ship.y - ship.vy/5*n - y,
+                               ship.z - ship.vz/5*n - z )
+                  }
+                  
+                if(shipView){
+                  var shipCamDist = 100
+                  var shipCamTracking = 12
+                  var vecx = 0
+                  var vecy = 0
+                  var vecz = shipCamDist
+                  ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
+                  p = Math.atan2(vecy, vecz) + shape.pitch + .5
+                  d = Math.hypot(vecy, vecz)
+                  vecy = S(p) * d
+                  vecz = C(p) * d
+                  ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
+                  p = Math.atan2(vecx, vecz) + shape.yaw
+                  d = Math.hypot(vecx, vecz)
+                  vecx = S(p) * d
+                  vecz = C(p) * d
+                  ship.vecx += (vecx - ship.vecx) / shipCamTracking
+                  ship.vecy += (vecy - ship.vecy) / shipCamTracking
+                  ship.vecz += (vecz - ship.vecz) / shipCamTracking
+                  renderer.x = -ship.x - ship.vecx
+                  renderer.y = -ship.y - ship.vecy + 40
+                  renderer.z = -ship.z - ship.vecz
+                  renderer.yaw = -shape.yaw + Math.PI
+                  renderer.pitch = shape.pitch
+                }
               }
               renderer.Draw(shape)
             break
@@ -1752,6 +1825,9 @@
               //if(!shipView) renderer.Draw(shape)
               renderer.Draw(shape)
             break
+            case 'cursor':
+              if(!launched && alive) renderer.Draw(shape)
+            break
             case 'main':
               renderer.Draw(shape)
             break
@@ -1778,6 +1854,8 @@
           bhIdx--
           unDid = false
         }
+        
+        //renderer.Draw(tempCube)
       }
       
     </script>
