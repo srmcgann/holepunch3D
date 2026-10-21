@@ -585,7 +585,7 @@
         colorMix: 0,
         color: 0xff0000,
       }
-      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         Coordinates.ShapeFromArray(geometry,
               [[0,0,0],[0,0,0],[0,0,0]]).then(async res => {
           //res.cullFace = 'back'
@@ -753,7 +753,7 @@
         alpha: 1,
         disableDepthTest: true,
         penumbra: .5,
-        size: 16,
+        size: 5,
         color: 0xffbb88,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -807,7 +807,7 @@
         shapeType: 'sprite',
         map: 'https://srmcgann.github.io/Coordinates/resources/stars/star6.png',
         name: 'cursor',
-        size: 100,
+        size: 25,
         colorMix: 0,
         disableDepthTest: true,
       }
@@ -843,9 +843,9 @@
         map: 'https://srmcgann.github.io/holepunch3D/ship.png',
         name: 'ship',
         rotationMode: 2,
-        scaleX: 3,
-        scaleY: 3,
-        scaleZ: 3,
+        scaleX: 1,
+        scaleY: 1,
+        scaleZ: 1,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -1005,6 +1005,30 @@
         })
       }
       
+      const AxisView = () => {
+        var ret
+        const ori = (theta, comp) => {
+          return Math.round((Math.atan2(S(theta), 
+                              C(theta)))*1e10)/1e10 ==
+                 Math.round(comp*1e10)/1e10
+        }
+        if(ori(renderer.yaw, 0) &&
+           ori(renderer.pitch, 0)) ret = 'Z'
+        if(ori(renderer.yaw, Math.PI/2) &&
+           ori(renderer.pitch, 0)) ret = 'X'
+        if(ori(renderer.yaw, Math.PI) &&
+           ori(renderer.pitch, 0)) ret = '-Z'
+        if(ori(renderer.yaw, Math.PI * 1.5) &&
+           ori(renderer.pitch, 0)) ret = '-X'
+        if(ori(renderer.yaw, 0) &&
+           ori(renderer.pitch, Math.PI/2)) ret = '-Y'
+        if(ori(renderer.yaw, 0) &&
+           ori(renderer.pitch, -Math.PI/2)) ret = 'Y'
+
+        console.log('axisView = ' + ret)
+        return ret
+      }
+      
       var misplaced = {
         timer: 0, x: 1e5, y: 1e5, z: 1e5
       }
@@ -1082,11 +1106,11 @@
       var ship, shipView, addingMass
       var launched, massAvailable, alive
       var level, showHUD, unDid, modalVisible
-      var cameras, predictiveLength
+      var cameras, predictiveLength, shipSteps
       
       const Init = () => {
         level = 1
-        predictiveLength = 500
+        predictiveLength = 200
         modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
@@ -1151,7 +1175,7 @@
         }
         window.onmousewheel = e => {
           cursorDist -= e.deltaY / 25
-          cursorDist = Math.min(210, Math.max(-210, cursorDist))
+          cursorDist = Math.min(1e3, Math.max(-1e3, cursorDist))
         }
         window.onmouseout = () => {
           hasMouse = false
@@ -1206,9 +1230,11 @@
         shipShape.pitch = 0
         shipShape.yaw = Math.PI
         
-        SpawnBlackHole(0,20,0,5)
-        bhIdx++
-        bhIdx%=iPc
+        shipSteps = 5
+        
+        //SpawnBlackHole(0,20,0,5)
+        //bhIdx++
+        //bhIdx%=iPc
         
         renderer.useKeys = true
         alive = true
@@ -1221,23 +1247,28 @@
           case 1:
             //LoadFPS()
             levelName = 'FLIGHT TRAINING'
-            cursorDist = 20
+            cursorDist = 100
 
             SpawnTarget(100, 0, 0)
-            initShipX = -100
+            initShipX = -300
             initShipY = 0
             initShipZ = 0
             
-            initShipVx = 1 
+            initShipVx = 1
             initShipVy = 0
             initShipVz = 0
             
-            cameras[0].x = renderer.x = 0
-            cameras[0].y = renderer.y = 0
-            cameras[0].z = renderer.z = 100
-            cameras[0].roll = renderer.roll = 0
-            cameras[0].pitch = renderer.pitch = 0
-            cameras[0].yaw = renderer.yaw = 0
+            renderer.pitch = -Math.PI/2
+            renderer.x = 0
+            renderer.y = 0
+            renderer.z = 300
+            var ap = renderer.ActualPosition()
+            cameras[0].x = ap.x
+            cameras[0].y = ap.y
+            cameras[0].z = ap.z
+            cameras[0].roll = ap.z
+            cameras[0].pitch = ap.pitch
+            cameras[0].yaw = ap.yaw
           break
         }
         
@@ -1295,61 +1326,101 @@
           
           
           if(AxisMarkersVisible()){
-            var rx, ry, rz
-            var fps = renderer.cameraMode == 'fps'
-            var fac = 1/renderer.fov*100
-            if(renderer.cameraMode == 'fps'){
-              var mag = fac / (1/(cursorDist/10))
-              x = (mx - w/2) * mag
-              y = -(my - h/2) * mag
-              z = 50 / fac * mag
-              p = Math.atan2(y, z) - renderer.pitch
-              d = Math.hypot(y, z)
+            var axis = AxisView()
+            var rx, ry, rz, poly, ar
+            var ap = renderer.ActualPosition()
+            d = axis ? Math.hypot(ap.x, ap.y, ap.z) : cursorDist * 1.1111111
+            var fac = 2.5 / d * 200
+            var vx = (mx-w/2)/fac
+            var vy = -(my-h/2)/fac
+            var vz = 0
+            var x1, y1, z1, x2, y2, z2
+            switch(axis){
+              case 'X': case '-X':
+                x1 = ap.z
+                y1 = ap.y
+                z1 = ap.x
+                x2 = x1 + (vx - x1) * 100
+                y2 = y1 + (vy - y1) * 100
+                z2 = z1 + (vz - z1) * 100
+                poly = [
+                  [-1e3, -1e3, 0],
+                  [1e3, -1e3, 0],
+                  [1e3, 1e3, 0],
+                  [-1e3, 1e3, 0],
+                ]
+                ar=Coordinates.PointInPoly3D(x1, y1, z1,
+                                             x2, y2, z2,
+                                             poly)
+              break
+              case 'Y': case '-Y':
+                x1 = ap.x
+                y1 = ap.z
+                z1 = ap.y
+                x2 = x1 + (vx - x1) * 100
+                y2 = y1 + (vy - y1) * 100
+                z2 = z1 + (vz - z1) * 100
+                poly = [
+                  [-1e3, -1e3, 0],
+                  [1e3, -1e3, 0],
+                  [1e3, 1e3, 0],
+                  [-1e3, 1e3, 0],
+                ]
+                ar=Coordinates.PointInPoly3D(x1, y1, z1,
+                                             x2, y2, z2,
+                                             poly)
+              break
+              case 'Z': case '-Z':
+                x1 = ap.x
+                y1 = ap.y
+                z1 = ap.z
+                x2 = x1 + (vx - x1) * 100
+                y2 = y1 + (vy - y1) * 100
+                z2 = z1 + (vz - z1) * 100
+                poly = [
+                  [-1e3, -1e3, 0],
+                  [1e3, -1e3, 0],
+                  [1e3, 1e3, 0],
+                  [-1e3, 1e3, 0],
+                ]
+                ar=Coordinates.PointInPoly3D(x1, y1, z1,
+                                             x2, y2, z2,
+                                             poly)
+              break
+              default:
+                ar = ''
+                x2 = vx
+                y2 = vy
+                z2 = cursorDist
+                
+                p = Math.atan2(y2,z2) + ap.pitch
+                d = Math.hypot(y2,z2)
+                y2 = S(p) * d
+                z2 = C(p) * d
+                p = Math.atan2(x2,z2) + ap.yaw
+                d = Math.hypot(x2,z2)
+                x2 = S(p) * d
+                z2 = C(p) * d
+                cursor.x = x2 + ap.x
+                cursor.y = y2 + ap.y
+                cursor.z = z2 + ap.z
+              break            
+            }
+            if(ar){
+              x = ar[0][0]
+              y = ar[0][1]
+              z = ar[0][2]
+              p = Math.atan2(y,z) + ap.pitch
+              d = Math.hypot(y,z)
               y = S(p) * d
               z = C(p) * d
-              p = Math.atan2(x, z) - renderer.yaw
-              d = Math.hypot(x, z)
+              p = Math.atan2(x,z) + ap.yaw
+              d = Math.hypot(x,z)
               x = S(p) * d
               z = C(p) * d
-              
-              rx = renderer.x
-              ry = renderer.y
-              rz = renderer.z
-              cursor.x = x - rx
-              cursor.y = y - ry 
-              cursor.z = z - rz
-            }else{
-              var mag = fac / (1/(cursorDist/10))
-
-              var rx = 0
-              var ry = 0
-              var rz = renderer.z/(1+fac)
-              p = Math.atan2(ry, rz) + renderer.pitch
-              d = Math.hypot(ry, rz)
-              ry = S(p) * d
-              rz = C(p) * d
-              p = Math.atan2(rx, rz) - renderer.yaw
-              d = Math.hypot(rx, rz)
-              rx = S(p) * d
-              rz = C(p) * d
-
-              
-              x = (mx - w/2) * mag
-              y = -(my - h/2) * mag
-              z = 50 / fac * mag
-              p = Math.atan2(y, z) + renderer.pitch
-              d = Math.hypot(y, z)
-              y = S(p) * d
-              z = C(p) * d
-              p = Math.atan2(x, z) - renderer.yaw
-              d = Math.hypot(x, z)
-              x = S(p) * d
-              z = C(p) * d
-              
-              cursor.x = x - rx
-              cursor.y = y - ry 
-              cursor.z = z - rz
-
+              cursor.x = x
+              cursor.y = y
+              cursor.z = z
             }
             
             cursor.x = Math.min(1e3, Math.max(-1e3, cursor.x))
@@ -1384,18 +1455,20 @@
       }
       
       const BlackholeFunc = (x1, y1, z1, vx, vy, vz) => {
+          var d_, collision = false
           blackholes.forEach((v, i) => {
             if(v.x != 1e5){
-              var dx1 = v.x - x1
-              var dy1 = v.y - y1
-              var dz1 = v.z - z1
-              d = 1+(1+Math.hypot(dx1, dy1, dz1)) ** 3 / 10
+              var dx1 = (v.x - x1) 
+              var dy1 = (v.y - y1) 
+              var dz1 = (v.z - z1) 
+              d = (d_=Math.hypot(dx1, dy1, dz1)) ** 2.5 / 10
               vx += dx1 / d * grav * v.mass
               vy += dy1 / d * grav * v.mass
               vz += dz1 / d * grav * v.mass
+              if(d_ < v.mass/2.5) collision = true
             }
           })
-          return { x1, y1, z1, vx, vy, vz }
+          return { x1, y1, z1, vx, vy, vz, collision }
       }
       
       window.Reset = () => {
@@ -1419,7 +1492,7 @@
       
       var homing = 100
       var drag = 1
-      var grav = .25
+      var grav = .05
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -1428,7 +1501,7 @@
         
         levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%12)
         massEl.innerHTML =('▐').repeat(massAvailable/4)
-        massNumericEl.innerHTML = massAvailable
+        massNumericEl.innerHTML = Math.round(massAvailable)
         holeCountEl.innerHTML = blackholes.filter(v=>v.x != 1e5).length
         
         if(0 && !(renderer.frameCount%10)){
@@ -1535,7 +1608,7 @@
                       var x2 = v.x
                       var y2 = v.y
                       var z2 = v.z
-                      d = 2+(Math.hypot(x2-x1, y2-y1, z2-z1))**3/1e4
+                      d = Math.hypot(x2-x1, y2-y1, z2-z1)**2
                       particles[j].vx += (x2-x1) / d * grav
                       particles[j].vy += (y2-y1) / d * grav
                       particles[j].vz += (z2-z1) / d * grav
@@ -1559,8 +1632,8 @@
             case 'blackhole':
               if(addingMass){
                 if(massAvailable > 0) {
-                  massAvailable -= .1
-                  blackholes[bhIdx].mass += .1
+                  massAvailable -= 1
+                  blackholes[bhIdx].mass += 1
                 }
               }
               var disk = shapes.filter(v=>v.name =='blackhole disk')[0]
@@ -1629,54 +1702,68 @@
             break
             case 'lines':
               var colors = shape.shader.datasets[0].optionalAttributes[0].value
-              var x1 = ship.x
-              var y1 = ship.y
-              var z1 = ship.z
-              var el = shapes.filter(v=>v.name=='ship')[0]
-              var vx = ship.vx
-              var vy = ship.vy
-              var vz = ship.vz
-              var ptch = -el.pitch
-              var yw = el.yaw
-              for(var j = 0; j < shape.vertices.length; j += 6){
-                if(j < 6*predictiveLength){
-                  var idx = j
-                  var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
-                  x1 = ar.x1
-                  y1 = ar.y1
-                  z1 = ar.z1
-                  vx = ar.vx
-                  vy = ar.vy
-                  vz = ar.vz
-                  var x2 = x1 + vx
-                  var y2 = y1 + vy
-                  var z2 = z1 + vz
+              for(var i = 0; i < shipSteps; i++){
+                var x1 = ship.x
+                var y1 = ship.y
+                var z1 = ship.z
+                var el = shapes.filter(v=>v.name=='ship')[0]
+                var vx = ship.vx
+                var vy = ship.vy
+                var vz = ship.vz
+                var ptch = -el.pitch
+                var yw = el.yaw
+                var collision = false
+                for(var j = 0; j < shape.vertices.length; j += 6){
+                  if(j < 6*predictiveLength){
+                    var idx = j
+                    if(!collision){
+                      var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
+                      x1 = ar.x1
+                      y1 = ar.y1
+                      z1 = ar.z1
+                      vx = ar.vx
+                      vy = ar.vy
+                      vz = ar.vz
+                      if(ar.collision) collision = true
+                      
+                      var x2 = x1 + vx
+                      var y2 = y1 + vy
+                      var z2 = z1 + vz
 
-                  x2 = x1 + vx
-                  y2 = y1 + vy
-                  z2 = z1 + vz
-                  shape.vertices[idx+0] = -x1
-                  shape.vertices[idx+1] = y1
-                  shape.vertices[idx+2] = z1
-                  shape.vertices[idx+3] = -x2
-                  shape.vertices[idx+4] = y2
-                  shape.vertices[idx+5] = z2
-                  
-                  x1 = x2
-                  y1 = y2
-                  z1 = z2
-                  
-                  d = Math.hypot(vx, vy, vz)
-                  var rgb = Coordinates.HSVToRGB(0,0,.25+Math.min(.75,d/50))
-                  var red = rgb[0] / 256
-                  var green = rgb[1] / 256
-                  var blue = rgb[2] / 256
-                  for(var m = 2*3; m--;){
-                    var idx2 = idx/6*8*3 + m*4
-                    colors[idx2 + 0] = red
-                    colors[idx2 + 1] = green
-                    colors[idx2 + 2] = blue
-                    colors[idx2 + 3] = 1
+                      x2 = x1 + vx
+                      y2 = y1 + vy
+                      z2 = z1 + vz
+                      shape.vertices[idx+0] = -x1
+                      shape.vertices[idx+1] = y1
+                      shape.vertices[idx+2] = z1
+                      shape.vertices[idx+3] = -x2
+                      shape.vertices[idx+4] = y2
+                      shape.vertices[idx+5] = z2
+                      
+                      x1 = x2
+                      y1 = y2
+                      z1 = z2
+                      
+                      d = Math.hypot(vx, vy, vz)
+                      var rgb = Coordinates.HSVToRGB(d*20,d**2/2,.5+Math.min(.5,d**2/2))
+                      var red = rgb[0] / 256
+                      var green = rgb[1] / 256
+                      var blue = rgb[2] / 256
+                      for(var m = 2*3; m--;){
+                        var idx2 = idx/6*8*3 + m*4
+                        colors[idx2 + 0] = red
+                        colors[idx2 + 1] = green
+                        colors[idx2 + 2] = blue
+                        colors[idx2 + 3] = 1
+                      }
+                    }else{
+                      shape.vertices[idx+0] = 0
+                      shape.vertices[idx+1] = 0
+                      shape.vertices[idx+2] = 0
+                      shape.vertices[idx+3] = 0
+                      shape.vertices[idx+4] = 0
+                      shape.vertices[idx+5] = 0
+                    }
                   }
                 }
               }
@@ -1730,73 +1817,75 @@
             break
             case 'ship':
               var shipDrag = 1.000001
-              if(launched){
-                if(alive){
-                  var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
-                  ship.x = ar.x1
-                  ship.y = ar.y1
-                  ship.z = ar.z1
-                  ship.vx = ar.vx
-                  ship.vy = ar.vy
-                  ship.vz = ar.vz
+              for(var i = 0; i < shipSteps; i++){
+                if(launched){
+                  if(alive){
+                    var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
+                    ship.x = ar.x1
+                    ship.y = ar.y1
+                    ship.z = ar.z1
+                    ship.vx = ar.vx
+                    ship.vy = ar.vy
+                    ship.vz = ar.vz
+                  }
                   var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
                   var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
                   
                   shape.yaw = p1
                   shape.pitch = p2
-                }         
-                
-                if(alive && launched){
-                  shape.x = ship.x += ship.vx
-                  shape.y = ship.y += ship.vy
-                  shape.z = ship.z += ship.vz
-                }
-                ship.vx /= drag
-                ship.vy /= drag
-                ship.vz /= drag
-                if(ship.x > 1e3 || ship.x < -1e3 ||
-                   ship.y > 1e3 || ship.y < -1e3 ||
-                   ship.z > 1e3 || ship.z < -1e3){
-                   alive = false
-                   renderer.useKeys = false
-                   //shipView = false
-                }
-                d = Math.hypot(ship.vx, ship.vy, ship.vz)
-                if(alive && d > .01 && Rn() < 1)
-                  x = ship.vx / d * 15
-                  y = ship.vy / d * 15
-                  z = ship.vz / d * 15
-                  for(var n=0; n<5; n++){
-                    SpawnSmoke(
-                               ship.x - ship.vx/5*n - x,
-                               ship.y - ship.vy/5*n - y,
-                               ship.z - ship.vz/5*n - z )
-                  }
                   
-                if(shipView){
-                  var shipCamDist = 100
-                  var shipCamTracking = 12
-                  var vecx = 0
-                  var vecy = 0
-                  var vecz = shipCamDist
-                  ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
-                  p = Math.atan2(vecy, vecz) + shape.pitch + .5
-                  d = Math.hypot(vecy, vecz)
-                  vecy = S(p) * d
-                  vecz = C(p) * d
-                  ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
-                  p = Math.atan2(vecx, vecz) + shape.yaw
-                  d = Math.hypot(vecx, vecz)
-                  vecx = S(p) * d
-                  vecz = C(p) * d
-                  ship.vecx += (vecx - ship.vecx) / shipCamTracking
-                  ship.vecy += (vecy - ship.vecy) / shipCamTracking
-                  ship.vecz += (vecz - ship.vecz) / shipCamTracking
-                  renderer.x = -ship.x - ship.vecx
-                  renderer.y = -ship.y - ship.vecy + 40
-                  renderer.z = -ship.z - ship.vecz
-                  renderer.yaw = -shape.yaw + Math.PI
-                  renderer.pitch = shape.pitch
+                  if(alive && launched){
+                    shape.x = ship.x += ship.vx
+                    shape.y = ship.y += ship.vy
+                    shape.z = ship.z += ship.vz
+                  }
+                  ship.vx /= drag
+                  ship.vy /= drag
+                  ship.vz /= drag
+                  if(ship.x > 1e3 || ship.x < -1e3 ||
+                     ship.y > 1e3 || ship.y < -1e3 ||
+                     ship.z > 1e3 || ship.z < -1e3){
+                     alive = false
+                     renderer.useKeys = false
+                     //shipView = false
+                  }
+                  d = Math.hypot(ship.vx, ship.vy, ship.vz)
+                  if(alive && d > .01 && Rn() < 1)
+                    x = ship.vx / d * 15
+                    y = ship.vy / d * 15
+                    z = ship.vz / d * 15
+                    for(var n=0; n<5; n++){
+                      SpawnSmoke(
+                                 ship.x - ship.vx/5*n - x,
+                                 ship.y - ship.vy/5*n - y,
+                                 ship.z - ship.vz/5*n - z )
+                    }
+                    
+                  if(shipView){
+                    var shipCamDist = 100
+                    var shipCamTracking = 12
+                    var vecx = 0
+                    var vecy = 0
+                    var vecz = shipCamDist
+                    ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
+                    p = Math.atan2(vecy, vecz) + shape.pitch + .5
+                    d = Math.hypot(vecy, vecz)
+                    vecy = S(p) * d
+                    vecz = C(p) * d
+                    ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
+                    p = Math.atan2(vecx, vecz) + shape.yaw
+                    d = Math.hypot(vecx, vecz)
+                    vecx = S(p) * d
+                    vecz = C(p) * d
+                    ship.vecx += (vecx - ship.vecx) / shipCamTracking
+                    ship.vecy += (vecy - ship.vecy) / shipCamTracking
+                    ship.vecz += (vecz - ship.vecz) / shipCamTracking
+                    renderer.x = -ship.x - ship.vecx
+                    renderer.y = -ship.y - ship.vecy + 40
+                    renderer.z = -ship.z - ship.vecz
+                    renderer.yaw = -shape.yaw + Math.PI
+                    renderer.pitch = shape.pitch
+                  }
                 }
               }
               renderer.Draw(shape)
