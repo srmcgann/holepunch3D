@@ -2,7 +2,13 @@
   link https://notoriousbfg.com/hole-punch
   
   to do:
-    fix spatial placement tool
+    ✔ undo button
+    ✔ reset button
+    ✔ ship camera-view toggle
+    ✔ death screen (ship has left the container)
+    ✔ predictive dashed "short path"
+    ✔ path of travel (smoke)
+    ✔ fix spatial placement tool
       - sliding components with reference shapes
     ✔ new blackhole sprite, suitable for size/mass adjustments
     ✔ improved cursor
@@ -15,16 +21,10 @@
     quick "axis-view" switching (make it the only option?)
       OR multi-view display
     target contact detection and level advancement
-    predictive dashed "short path"
-    death screen (ship has left the container)
     add / remove / delete blackholes
     set / change blackhole mass
     quick change view X/Y/Z
-    ship camera-view toggle
     smart camera mode - tracks ship from non-ship position
-    undo button
-    reset button
-    path of travel "line"
     ship-tracking camera mode for attempts
     levels
 -->
@@ -308,8 +308,8 @@
     <script type="module">
 
       import * as Coordinates from
-      "https://cantelope42.github.io/tempppppp/coordinates.js?3"
-      //"https://srmcgann.github.io/Coordinates/coordinates.min.js"
+      "https://srmcgann.github.io/Coordinates/coordinates.min.js"
+      //"https://cantelope42.github.io/tempppppp/coordinates.js?3"
 
       var rendererOptions = {
         ambientLight: .5, margin: 10, fit: 'cover',
@@ -328,10 +328,11 @@
       var h = c.height = renderer.c.height
       
       var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
-      //var refTexture = 'https://i.imgur.com/Ad8pyZy.mp4'
+      //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
       //var refTexture = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/pathway_morning.jpg'
       
       var showBackground = true
+      var playbackSpeed = 2
 
       
       var HUD = new Image()
@@ -364,6 +365,7 @@
         { uniform: {
           type: 'reflection',
           map: showBackground ? refTexture : '',
+          playbackSpeed,
           value: .1
         } },
       ]
@@ -418,6 +420,7 @@
         { uniform: {
           type: 'reflection',
           map: showBackground ? refTexture : '',
+          playbackSpeed,
           value: .3
         } },
       ]
@@ -433,7 +436,7 @@
       var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .85}},
+        {lighting: {type: 'ambientLight', value: .5}},
         { uniform: {
           type: 'phong',
           value: 0
@@ -539,6 +542,7 @@
           sphereize: 1,
           subs: 4,
           map: showBackground ? refTexture : '',
+          playbackSpeed,
           size: 5e3,
           colorMix: 0,
         }
@@ -560,7 +564,7 @@
         scaleZ: 1e3,
         colorMix: 0,
       }
-      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
         await cubeGridShader.ConnectGeometry(geometry)
       })  
@@ -769,7 +773,6 @@
         smoke.push({ x, y, z, vx, vy, vz, life: 1 })
       }
 
-      /*
       var particles = []
       var geometryData = []
       var iParticlesc = 50
@@ -800,7 +803,6 @@
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
       })
-      */
       
       var cursor
       var geoOptions = {
@@ -1025,7 +1027,6 @@
         if(ori(renderer.yaw, 0) &&
            ori(renderer.pitch, -Math.PI/2)) ret = 'Y'
 
-        console.log('axisView = ' + ret)
         return ret
       }
       
@@ -1058,7 +1059,7 @@
       window.Launch = () => {
         if(blackholes.filter(v=>v.x!=1e5).length ||
              Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
-          UnloadFPSControls()
+          UnloadFPS()
           if(!launched){
             launched = true
             document.querySelector('#launchButton').style.background='#800'
@@ -1094,7 +1095,7 @@
         LoadLevel(level)
       }
       
-      const UnloadFPSControls = async (renderer) => {
+      const UnloadFPS = async (renderer) => {
         renderer.cameraMode     = 'default'
         renderer.showCrosshair  = false
         renderer.useFPSControls = false
@@ -1151,6 +1152,7 @@
               //renderer.useKeys = false
             }
           }
+          if(e.keyCode == 90 && keys[17]) Undo()
           if(e.keyCode == 72) showHUD = !showHUD
           if(e.keyCode == 32) {
             if(alive && !launched){
@@ -1161,7 +1163,7 @@
           }
           if(e.keyCode == 77){
             if(renderer.cameraMode == 'fps'){
-              UnloadFPSControls()
+              UnloadFPS()
               renderer.x = renderer.y = 0
               renderer.z = 20
               renderer.cameraMode = 'default'
@@ -1217,6 +1219,7 @@
       
         var initShipX, initShipY, initShipZ
         var initShipVx, initShipVy, initShipVz
+        UnloadFPS()
         smoke = []
         bhIdx = 0
         unDid = false
@@ -1230,7 +1233,7 @@
         shipShape.pitch = 0
         shipShape.yaw = Math.PI
         
-        shipSteps = 5
+        shipSteps = 3
         
         //SpawnBlackHole(0,20,0,5)
         //bhIdx++
@@ -1491,8 +1494,8 @@
       
       
       var homing = 100
-      var drag = 1
-      var grav = .05
+      var drag = 4
+      var grav = .2
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -1565,7 +1568,7 @@
               shape.z = -renderer.z
               //shape.color = 0xffffff
               //shape.colorMix = 1
-              //renderer.Draw(shape)
+              renderer.Draw(shape)
             break
             case 'smoke particles':
               var colors = shape.shader.datasets[0].optionalAttributes[0].value
@@ -1603,17 +1606,19 @@
                   var x1 = particles[j].x
                   var y1 = particles[j].y
                   var z1 = particles[j].z
-                  blackholes.map((v, i) => {
-                    if(v.x != 1e5){
-                      var x2 = v.x
-                      var y2 = v.y
-                      var z2 = v.z
-                      d = Math.hypot(x2-x1, y2-y1, z2-z1)**2
-                      particles[j].vx += (x2-x1) / d * grav
-                      particles[j].vy += (y2-y1) / d * grav
-                      particles[j].vz += (z2-z1) / d * grav
-                    }
-                  })
+                  var vx = particles[j].vx
+                  var vy = particles[j].vy
+                  var vz = particles[j].vz
+                  
+                  
+                  var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
+                  particles[j].x = ar.x1
+                  particles[j].y = ar.y1
+                  particles[j].z = ar.z1
+                  particles[j].vx += ar.vx *2
+                  particles[j].vy += ar.vy *2
+                  particles[j].vz += ar.vz *2
+                  
                   
                   x = particles[j].x += particles[j].vx /= drag
                   y = particles[j].y += particles[j].vy /= drag
@@ -1839,9 +1844,9 @@
                     shape.y = ship.y += ship.vy
                     shape.z = ship.z += ship.vz
                   }
-                  ship.vx /= drag
-                  ship.vy /= drag
-                  ship.vz /= drag
+                  //ship.vx /= drag
+                  //ship.vy /= drag
+                  //ship.vz /= drag
                   if(ship.x > 1e3 || ship.x < -1e3 ||
                      ship.y > 1e3 || ship.y < -1e3 ||
                      ship.z > 1e3 || ship.z < -1e3){
@@ -1851,9 +1856,9 @@
                   }
                   d = Math.hypot(ship.vx, ship.vy, ship.vz)
                   if(alive && d > .01 && Rn() < 1)
-                    x = ship.vx / d * 15
-                    y = ship.vy / d * 15
-                    z = ship.vz / d * 15
+                    x = ship.vx / d * 3
+                    y = ship.vy / d * 3
+                    z = ship.vz / d * 3
                     for(var n=0; n<5; n++){
                       SpawnSmoke(
                                  ship.x - ship.vx/5*n - x,
