@@ -14,9 +14,9 @@
     ✔ improved cursor
     ✔ misplaced / mass depleted indicator
          status bar
-         ✔  ⤷ launch, undo, reset buttons
-         ✔  ⤷ mass meter
-         ✔  ⤷ level info
+         ✔ ⤷ launch, undo, reset buttons
+         ✔ ⤷ mass meter
+         ✔ ⤷ level info
          ✔ ⤷ help / hotkeys button
     quick "axis-view" switching (make it the only option?)
       OR multi-view display
@@ -83,8 +83,9 @@
       }
       #header{
         height: 34px;
-        background: linear-gradient(-90deg, #444, #444, #333, #333, #111, #111, #111, #111);
-        border-bottom: 1px solid #fff4;
+        background: linear-gradient(-90deg, #444, #444, #333, #333, #111, #111, #111, #111,#200,#400);
+        border-top: 1px solid #fff4;
+        border-bottom: 1px solid #500;
       }
       #footerControlCluster{
         text-align: center;
@@ -347,6 +348,12 @@
         HUD_dead.src = URL.createObjectURL(data)
       })
       
+      var death_screen = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/deathScreen.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        death_screen.src = URL.createObjectURL(data)
+      })
+      
       
       var S = Math.sin
       var C = Math.cos
@@ -454,8 +461,7 @@
       var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
       
       
-      var axisLength = 50
-      var iLc = axisLength*3 + 1e3
+      var iLc = 1e3
       var colors = []
       Array(iLc).fill().map((v, i) => {
         var rgb   = Coordinates.HSVToRGB(360/iLc*i, 1, 1)
@@ -489,6 +495,42 @@
         }},
       ]
       var linesShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
+      var iParticlesc = 1e3
+      var colors = []
+      Array(iParticlesc).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/iParticlesc*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
+      
+      var shaderOptions = [
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: colors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            mixColor = attribCols;
+          `,
+        }},
+      ]
+      var particlesShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
 
       var iSmokec = 5e3
@@ -765,7 +807,6 @@
         await particleShader.ConnectGeometry(geometry)
       })
       
-      
       const SpawnSmoke = (x, y, z) => {
         var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * iSmokev
         var vy = C(q) * iSmokev
@@ -773,35 +814,40 @@
         smoke.push({ x, y, z, vx, vy, vz, life: 1 })
       }
 
+      var iParticlev = 3
+      const SpawnSplosion = (x, y, z) => {
+        for(var i = 0; i < 250; i++){
+          var v = iParticlev * Rn() ** .33
+          var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * v
+          var vy = C(q) * v
+          var vz = C(p) * S(q) * v
+          particles.push({ x, y, z, vx, vy, vz, life: 1 })
+        }
+      }
+
       var particles = []
       var geometryData = []
-      var iParticlesc = 50
-      var bars = 20
-      var ls = 60
-      var sp = ls/8
-      for(j = 0; j < bars; j ++){
-        Array(iParticlesc).fill().map((v, i) => {
-          x = S(p=Math.PI*2/iParticlesc*i) * ls
-          y = C(p) * ls
-          z = (-bars/2 + j + .5) * sp
-          var vx = 0
-          var vy = 0
-          var vz = 0
-          geometryData.push([x,y,z])
-          particles.push({ x, y, z, vx, vy, vz, ox: x, oy: y, oz: z })
-        })
-      }
+      Array(iParticlesc).fill().map((v, i) => {
+        x = 1e5
+        y = 1e5
+        z = 1e5
+        var vx = 0
+        var vy = 0
+        var vz = 0
+        geometryData.push([x,y,z])
+      })
       var geoOptions = {
         shapeType: 'particles',
         name: 'particles',
         geometryData,
         alpha: .8,
         penumbra: .33,
-        size: 5,
+        size: 10,
         color: 0xff8800,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
+        await particlesShader.ConnectGeometry(geometry)
       })
       
       var cursor
@@ -1095,7 +1141,7 @@
         LoadLevel(level)
       }
       
-      const UnloadFPS = async (renderer) => {
+      const UnloadFPS = async () => {
         renderer.cameraMode     = 'default'
         renderer.showCrosshair  = false
         renderer.useFPSControls = false
@@ -1214,13 +1260,14 @@
       var massEl = document.querySelector("#massMeter")
       var massNumericEl = document.querySelector("#massNumeric")
       var holeCountEl = document.querySelector("#holeCount")
-      var blackholes
+      var blackholes, screenAlpha
       const LoadLevel = level => {
       
         var initShipX, initShipY, initShipZ
         var initShipVx, initShipVy, initShipVz
         UnloadFPS()
         smoke = []
+        particles = []
         bhIdx = 0
         unDid = false
         window.hovering = false
@@ -1232,6 +1279,7 @@
         shipShape.roll = 0
         shipShape.pitch = 0
         shipShape.yaw = Math.PI
+        screenAlpha = 0
         
         shipSteps = 3
         
@@ -1532,12 +1580,17 @@
         }
         
         if(shipView && showHUD){
-          Coordinates.Overlay.ctx.globalAlpha = alive ? .25 : .5
+          Coordinates.Overlay.ctx.globalAlpha = alive ? .25 : screenAlpha
           Coordinates.Overlay.ctx.clearRect(0,0,w,h)
           Coordinates.Overlay.ctx.drawImage(alive ? HUD : HUD_dead,0,0,w,h)
           Coordinates.Overlay.ctx.globalAlpha = 1
         }
         if(!alive){
+          screenAlpha += .01
+          screenAlpha = Math.min(1, screenAlpha)
+          Coordinates.Overlay.ctx.drawImage(deathScreen, 0,0,w,h)
+          /*
+          Coordinates.Overlay.ctx.globalAlpha = screenAlpha
           Coordinates.Overlay.ctx.fillStyle = '#400c'
           Coordinates.Overlay.ctx.fillRect(0,0,w,h)
           var fs
@@ -1556,6 +1609,8 @@
           Coordinates.Overlay.ctx.fillText('hit spacebar to try again', w/2, h/2 + fs)
           Coordinates.Overlay.ctx.lineWidth = 1
           Coordinates.Overlay.ctx.strokeText('hit spacebar to try again', w/2, h/2 + fs)
+          */
+          Coordinates.Overlay.ctx.globalAlpha = 1
         }
 
         //Coordinates.Overlay.ctx.drawImage(renderer.c, w-w/4, h/2-h/8, w/4, h/4)
@@ -1596,36 +1651,25 @@
               renderer.Draw(shape)
             break
             case 'particles':
-              for(var i = 0; i < shape.vertices.length; i += 3){
-                var j = i/3
-                if(j < particles.length){
-                  particles[j].vx += (particles[j].ox - particles[j].x) / homing
-                  particles[j].vy += (particles[j].oy - particles[j].y) / homing
-                  particles[j].vz += (particles[j].oz - particles[j].z) / homing
-                  
-                  var x1 = particles[j].x
-                  var y1 = particles[j].y
-                  var z1 = particles[j].z
-                  var vx = particles[j].vx
-                  var vy = particles[j].vy
-                  var vz = particles[j].vz
-                  
-                  
-                  var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
-                  particles[j].x = ar.x1
-                  particles[j].y = ar.y1
-                  particles[j].z = ar.z1
-                  particles[j].vx += ar.vx *2
-                  particles[j].vy += ar.vy *2
-                  particles[j].vz += ar.vz *2
-                  
-                  
-                  x = particles[j].x += particles[j].vx /= drag
-                  y = particles[j].y += particles[j].vy /= drag
-                  z = particles[j].z += particles[j].vz /= drag
-                  shape.vertices[i+0] = x
-                  shape.vertices[i+1] = y
-                  shape.vertices[i+2] = z
+              particles = particles.filter(v=>v.life > 0)
+              var colors = shape.shader.datasets[0].optionalAttributes[0].value
+              for(var i = 0; i < shape.vertices.length; i +=3){
+                var idx = i/3
+                var pDrag = 1.1
+                if(idx < particles.length){
+                  var pt = particles[idx]
+                  pt.life -= .01
+                  shape.vertices[i+0] = pt.x += pt.vx /= pDrag
+                  shape.vertices[i+1] = pt.y += pt.vy /= pDrag
+                  shape.vertices[i+2] = pt.z += pt.vz /= pDrag
+                  var cIdx = i/3*4
+                  d = Math.hypot(pt.vx, pt.vy, pt.vz)
+                  var rgb = Coordinates.HSVToRGB(d**.5*30, .5+Math.min(1,d**.5*2),
+                                                        Math.min(1,d**.5*4))
+                  colors[cIdx+0] = rgb[0] / 256
+                  colors[cIdx+1] = rgb[1] / 256
+                  colors[cIdx+2] = rgb[2] / 256
+                  colors[cIdx+3] = pt.life ** .5
                 }else{
                   shape.vertices[i+0] = 1e5
                   shape.vertices[i+1] = 1e5
@@ -1729,37 +1773,45 @@
                       vx = ar.vx
                       vy = ar.vy
                       vz = ar.vz
-                      if(ar.collision) collision = true
-                      
-                      var x2 = x1 + vx
-                      var y2 = y1 + vy
-                      var z2 = z1 + vz
+                      if(ar.collision){
+                        collision = true
+                        shape.vertices[idx+0] = 0
+                        shape.vertices[idx+1] = 0
+                        shape.vertices[idx+2] = 0
+                        shape.vertices[idx+3] = 0
+                        shape.vertices[idx+4] = 0
+                        shape.vertices[idx+5] = 0
+                      }else{
+                        var x2 = x1 + vx
+                        var y2 = y1 + vy
+                        var z2 = z1 + vz
 
-                      x2 = x1 + vx
-                      y2 = y1 + vy
-                      z2 = z1 + vz
-                      shape.vertices[idx+0] = -x1
-                      shape.vertices[idx+1] = y1
-                      shape.vertices[idx+2] = z1
-                      shape.vertices[idx+3] = -x2
-                      shape.vertices[idx+4] = y2
-                      shape.vertices[idx+5] = z2
-                      
-                      x1 = x2
-                      y1 = y2
-                      z1 = z2
-                      
-                      d = Math.hypot(vx, vy, vz)
-                      var rgb = Coordinates.HSVToRGB(d*20,d**2/2,.5+Math.min(.5,d**2/2))
-                      var red = rgb[0] / 256
-                      var green = rgb[1] / 256
-                      var blue = rgb[2] / 256
-                      for(var m = 2*3; m--;){
-                        var idx2 = idx/6*8*3 + m*4
-                        colors[idx2 + 0] = red
-                        colors[idx2 + 1] = green
-                        colors[idx2 + 2] = blue
-                        colors[idx2 + 3] = 1
+                        x2 = x1 + vx
+                        y2 = y1 + vy
+                        z2 = z1 + vz
+                        shape.vertices[idx+0] = -x1
+                        shape.vertices[idx+1] = y1
+                        shape.vertices[idx+2] = z1
+                        shape.vertices[idx+3] = -x2
+                        shape.vertices[idx+4] = y2
+                        shape.vertices[idx+5] = z2
+                        
+                        x1 = x2
+                        y1 = y2
+                        z1 = z2
+                        
+                        d = Math.hypot(vx, vy, vz)
+                        var rgb = Coordinates.HSVToRGB(d*20,d**2/2,.5+Math.min(.5,d**2/2))
+                        var red = rgb[0] / 256
+                        var green = rgb[1] / 256
+                        var blue = rgb[2] / 256
+                        for(var m = 2*3; m--;){
+                          var idx2 = idx/6*8*3 + m*4
+                          colors[idx2 + 0] = red
+                          colors[idx2 + 1] = green
+                          colors[idx2 + 2] = blue
+                          colors[idx2 + 3] = 1
+                        }
                       }
                     }else{
                       shape.vertices[idx+0] = 0
@@ -1832,64 +1884,71 @@
                     ship.vx = ar.vx
                     ship.vy = ar.vy
                     ship.vz = ar.vz
-                  }
-                  var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
-                  var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
-                  
-                  shape.yaw = p1
-                  shape.pitch = p2
-                  
-                  if(alive && launched){
-                    shape.x = ship.x += ship.vx
-                    shape.y = ship.y += ship.vy
-                    shape.z = ship.z += ship.vz
-                  }
-                  //ship.vx /= drag
-                  //ship.vy /= drag
-                  //ship.vz /= drag
-                  if(ship.x > 1e3 || ship.x < -1e3 ||
-                     ship.y > 1e3 || ship.y < -1e3 ||
-                     ship.z > 1e3 || ship.z < -1e3){
-                     alive = false
-                     renderer.useKeys = false
-                     //shipView = false
-                  }
-                  d = Math.hypot(ship.vx, ship.vy, ship.vz)
-                  if(alive && d > .01 && Rn() < 1)
-                    x = ship.vx / d * 3
-                    y = ship.vy / d * 3
-                    z = ship.vz / d * 3
-                    for(var n=0; n<5; n++){
-                      SpawnSmoke(
-                                 ship.x - ship.vx/5*n - x,
-                                 ship.y - ship.vy/5*n - y,
-                                 ship.z - ship.vz/5*n - z )
+                    if(ar.collision) {
+                      SpawnSplosion(ship.x, ship.y, ship.z)
+                      alive = false
                     }
+                  }
+                  if(alive){
+                    var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
+                    var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
                     
-                  if(shipView){
-                    var shipCamDist = 100
-                    var shipCamTracking = 12
-                    var vecx = 0
-                    var vecy = 0
-                    var vecz = shipCamDist
-                    ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
-                    p = Math.atan2(vecy, vecz) + shape.pitch + .5
-                    d = Math.hypot(vecy, vecz)
-                    vecy = S(p) * d
-                    vecz = C(p) * d
-                    ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
-                    p = Math.atan2(vecx, vecz) + shape.yaw
-                    d = Math.hypot(vecx, vecz)
-                    vecx = S(p) * d
-                    vecz = C(p) * d
-                    ship.vecx += (vecx - ship.vecx) / shipCamTracking
-                    ship.vecy += (vecy - ship.vecy) / shipCamTracking
-                    ship.vecz += (vecz - ship.vecz) / shipCamTracking
-                    renderer.x = -ship.x - ship.vecx
-                    renderer.y = -ship.y - ship.vecy + 40
-                    renderer.z = -ship.z - ship.vecz
-                    renderer.yaw = -shape.yaw + Math.PI
-                    renderer.pitch = shape.pitch
+                    shape.yaw = p1
+                    shape.pitch = p2
+                    
+                    if(alive && launched){
+                      shape.x = ship.x += ship.vx
+                      shape.y = ship.y += ship.vy
+                      shape.z = ship.z += ship.vz
+                    }
+                    //ship.vx /= drag
+                    //ship.vy /= drag
+                    //ship.vz /= drag
+                    if(ship.x > 1e3 || ship.x < -1e3 ||
+                       ship.y > 1e3 || ship.y < -1e3 ||
+                       ship.z > 1e3 || ship.z < -1e3){
+                       alive = false
+                       renderer.useKeys = false
+                       //shipView = false
+                    }
+                    d = Math.hypot(ship.vx, ship.vy, ship.vz)
+                    if(alive && d > .01 && Rn() < 1){
+                      x = ship.vx / d * 3
+                      y = ship.vy / d * 3
+                      z = ship.vz / d * 3
+                      for(var n=0; n<5; n++){
+                        SpawnSmoke(
+                                   ship.x - ship.vx/5*n - x,
+                                   ship.y - ship.vy/5*n - y,
+                                   ship.z - ship.vz/5*n - z )
+                      }
+                    }
+                      
+                    if(shipView){
+                      var shipCamDist = 100
+                      var shipCamTracking = 12
+                      var vecx = 0
+                      var vecy = 0
+                      var vecz = shipCamDist
+                      ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
+                      p = Math.atan2(vecy, vecz) + shape.pitch + .5
+                      d = Math.hypot(vecy, vecz)
+                      vecy = S(p) * d
+                      vecz = C(p) * d
+                      ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
+                      p = Math.atan2(vecx, vecz) + shape.yaw
+                      d = Math.hypot(vecx, vecz)
+                      vecx = S(p) * d
+                      vecz = C(p) * d
+                      ship.vecx += (vecx - ship.vecx) / shipCamTracking
+                      ship.vecy += (vecy - ship.vecy) / shipCamTracking
+                      ship.vecz += (vecz - ship.vecz) / shipCamTracking
+                      renderer.x = -ship.x - ship.vecx
+                      renderer.y = -ship.y - ship.vecy + 40
+                      renderer.z = -ship.z - ship.vecz
+                      renderer.yaw = -shape.yaw + Math.PI
+                      renderer.pitch = shape.pitch
+                    }
                   }
                 }
               }
