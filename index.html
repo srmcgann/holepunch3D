@@ -334,7 +334,6 @@
       
       var showBackground = true
       var playbackSpeed = 2
-
       
       var HUD = new Image()
       var url = 'https://srmcgann.github.io/holepunch3D/HUD_teal.png'
@@ -348,10 +347,10 @@
         HUD_dead.src = URL.createObjectURL(data)
       })
       
-      var death_screen = new Image()
-      var url = 'https://srmcgann.github.io/holepunch3D/deathScreen.png'
+      var deathScreen = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/deathScreen.jpg'
       await fetch(url).then(res=>res.blob()).then(data => {
-        death_screen.src = URL.createObjectURL(data)
+        deathScreen.src = URL.createObjectURL(data)
       })
       
       
@@ -1157,7 +1156,7 @@
       
       const Init = () => {
         level = 1
-        predictiveLength = 200
+        predictiveLength = 400
         modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
@@ -1182,45 +1181,55 @@
         }
         
         window.onmousedown = e => {
-          if(AxisMarkersVisible() &&
-             e.button == 0 && renderer.cameraMode != 'fps') {
-            if(alive && !launched) SpawnBlackHole()
+
+          if(!alive){
+             LevelReset()
+           }else{
+            if(AxisMarkersVisible() &&
+               e.button == 0 && renderer.cameraMode != 'fps') {
+              if(alive && !launched) SpawnBlackHole()
+            }
           }
         }
         
         window.onkeydown = e => {
           console.log(e.keyCode)
-          keys[e.keyCode] = true
-          if(e.keyCode == 79){
-            shipView = !shipView
-            if(shipView && renderer.cameraMode != 'fps'){
-              LoadFPS()
-              //renderer.useKeys = false
+          
+          if(!alive){
+             LevelReset()
+           }else{
+   
+            keys[e.keyCode] = true
+            if(e.keyCode == 79){
+              shipView = !shipView
+              if(shipView && renderer.cameraMode != 'fps'){
+                LoadFPS()
+                //renderer.useKeys = false
+              }
             }
-          }
-          if(e.keyCode == 90 && keys[17]) Undo()
-          if(e.keyCode == 72) showHUD = !showHUD
-          if(e.keyCode == 32) {
-            if(alive && !launched){
-              Launch()
-            }else{
-              LevelReset()
+            if(e.keyCode == 90 && keys[17]) Undo()
+            if(e.keyCode == 72) showHUD = !showHUD
+            if(e.keyCode == 32) {
+              if(alive && !launched){
+                Launch()
+              }
             }
-          }
-          if(e.keyCode == 77){
-            if(renderer.cameraMode == 'fps'){
-              UnloadFPS()
-              renderer.x = renderer.y = 0
-              renderer.z = 20
-              renderer.cameraMode = 'default'
-            }else{
-              LoadFPS()
+            if(e.keyCode == 77){
+              if(renderer.cameraMode == 'fps'){
+                UnloadFPS()
+                renderer.x = renderer.y = 0
+                renderer.z = 20
+                renderer.cameraMode = 'default'
+              }else{
+                LoadFPS()
+              }
             }
-          }
-          if(e.keyCode == 13) {
-            if(!addingMass) SpawnBlackHole()
+            if(e.keyCode == 13) {
+              if(!addingMass && !launched && alive) SpawnBlackHole()
+            }
           }
         }
+        
         window.onmousewheel = e => {
           cursorDist -= e.deltaY / 25
           cursorDist = Math.min(1e3, Math.max(-1e3, cursorDist))
@@ -1587,8 +1596,9 @@
         }
         if(!alive){
           screenAlpha += .01
-          screenAlpha = Math.min(1, screenAlpha)
-          Coordinates.Overlay.ctx.drawImage(deathScreen, 0,0,w,h)
+          screenAlpha = Math.min(.75, screenAlpha)
+          Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
+          Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/4,h/2-h/4,w/2,h/2)
           /*
           Coordinates.Overlay.ctx.globalAlpha = screenAlpha
           Coordinates.Overlay.ctx.fillStyle = '#400c'
@@ -1679,7 +1689,7 @@
               renderer.Draw(shape)
             break
             case 'blackhole':
-              if(addingMass){
+              if(addingMass && !launched && alive){
                 if(massAvailable > 0) {
                   massAvailable -= 1
                   blackholes[bhIdx].mass += 1
