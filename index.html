@@ -394,6 +394,12 @@
         incButton.src = URL.createObjectURL(data)
       })
       
+      var delButton = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/delete.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        delButton.src = URL.createObjectURL(data)
+      })
+      
       
       var S = Math.sin
       var C = Math.cos
@@ -1033,6 +1039,7 @@
 
 
       const LoadFPS = () => {
+        renderer.useKeys = true
         Coordinates.LoadFPSControls(renderer, {
           flyMode: true,
           mSpeed: 15,
@@ -1221,16 +1228,22 @@
             bhIdx%=iPc
           }
           addingMass = false
-          blackholes.map(v=>v.dragging = false)
+          blackholes.map(v=>{
+            v.dragging = false
+            v.buttonPress = -1
+          })
         }
         
         window.onmousemove = e => {
           if(alive && !launched){
             if((l = blackholes.filter(v=>v.dragging)).length) {
               l[0].dragging = true
-              l[0].x = cursor.x
-              l[0].y = cursor.y
-              l[0].z = cursor.z
+              l[0].x += cursor.x - l[0].tmx
+              l[0].y += cursor.y - l[0].tmy
+              l[0].z += cursor.z - l[0].tmz
+              l[0].tmx = cursor.x
+              l[0].tmy = cursor.y
+              l[0].tmz = cursor.z
             }
           }
         }
@@ -1244,11 +1257,12 @@
               if(alive && !launched){
                 if((l = blackholes.filter(v=>v.hover)).length) {
                   if(l[0].buttonHover){
+                    l[0].buttonPress = l[0].buttonHover
                   }else{
                     l[0].dragging = true
-                    l[0].x = cursor.x
-                    l[0].y = cursor.y
-                    l[0].z = cursor.z
+                    l[0].tmx = cursor.x
+                    l[0].tmy = cursor.y
+                    l[0].tmz = cursor.z
                   }
                 }else{
                   SpawnBlackHole()
@@ -1328,6 +1342,8 @@
           y = 1e5
           z = 1e5
           return { x, y, z, mass: 10,
+                   tmx: 0, tmy: 0, tmz: 0,
+                   buttonPress: -1,
                    hover: false,
                    dragging: false,
                    buttonHover: false}
@@ -1368,7 +1384,7 @@
         //bhIdx++
         //bhIdx%=iPc
         
-        renderer.useKeys = true
+        renderer.useKeys = false
         alive = true
         launched = false
         addingMass = false
@@ -1390,6 +1406,8 @@
             initShipVy = 0
             initShipVz = 0
             
+            renderer.yaw = 0
+            renderer.roll = 0
             renderer.pitch = -Math.PI/2
             renderer.x = 0
             renderer.y = 0
@@ -1823,7 +1841,7 @@
                     }, renderer)
                     if(ar){
                       var bh = blackholes[sIdx]
-                      bh.buttonHover = false
+                      bh.buttonHover = 0
                       var ctx = Coordinates.Overlay.ctx
                       ctx.textAlign = 'center'
                       ctx.fillStyle = '#0ffb'
@@ -1835,12 +1853,16 @@
                       ctx.fillText('[  ]', ar[0], ar[1] + fs/3.75)
                       var fs2 = 32
                       ctx.font = fs2 + 'px Play'
+                      ctx.strokeText(`mass ${bh.mass}`,
+                            x = ar[0], y = ar[1] + fs/2 + fs2)
                       ctx.fillText(`mass ${bh.mass}`,
                             x = ar[0], y = ar[1] + fs/2 + fs2)
                       ctx.fillStyle = '#f808'
                       var s = 50
                       ctx.drawImage(decButton, x-s/2 - 100, y-s/2, s, s)
                       ctx.drawImage(incButton, x-s/2 + 100, y-s/2, s, s)
+                      ctx.drawImage(delButton, x-s/2 + 0, ar[1]-bh.mass/2-80,
+                                                s, s)
 
                       s = bh.mass
                       Coordinates.Overlay.ctx.fillStyle = '#0f08'
@@ -1849,7 +1871,7 @@
                       var x2 = x1 + 50
                       var y2 = y1 + 50
                       if(mx>x1 && mx<x2 && my>y1 && my<y2){
-                        bh.buttonHover = true
+                        bh.buttonHover = 1
                         document.querySelectorAll('canvas').forEach(el=>{
                           el.style.cursor = 'pointer'
                         })
@@ -1859,10 +1881,52 @@
                       var x2 = x1 + 50
                       var y2 = y1 + 50
                       if(mx>x1 && mx<x2 && my>y1 && my<y2){
-                        bh.buttonHover = true
+                        bh.buttonHover = 2
                         document.querySelectorAll('canvas').forEach(el=>{
                           el.style.cursor = 'pointer'
                         })
+                      }
+                      var x1 = ar[0]+0-25
+                      var y1 = ar[1]-s/2-80
+                      var x2 = x1 + 50
+                      var y2 = y1 + 50
+                      if(mx>x1 && mx<x2 && my>y1 && my<y2){
+                        bh.buttonHover = 3
+                        document.querySelectorAll('canvas').forEach(el=>{
+                          el.style.cursor = 'pointer'
+                        })
+                      }
+                      if(bh.buttonPress != -1){
+                        switch(bh.buttonPress){
+                          case 1:
+                            if(bh.mass > 10){
+                              bh.mass--
+                              massAvailable ++
+                            }
+                            
+                          break
+                          case 2:
+                            if(massAvailable > 0){
+                              bh.mass++
+                              massAvailable --
+                            }
+                          break
+                          case 3:
+                            var bh = blackholes.filter(v=>v.buttonPress==3)[0]
+                            massAvailable += bh.mass
+                            bh.x = 1e5
+                            bh.y = 1e5
+                            bh.z = 1e5
+                            bh.tmx = 0
+                            bh.tmy = 0
+                            bh.tmz = 0
+                            bh.buttonPress = -1
+                            bh.hover = false
+                            bh.dragging = false
+                            bh.buttonHover = false
+                            
+                          break
+                        }
                       }
                       /*
                       Coordinates.Overlay.ctx.fillRect(
@@ -2077,11 +2141,24 @@
                         x = ship.vx / d * 3
                         y = ship.vy / d * 3
                         z = ship.vz / d * 3
-                        for(var n=0; n<5; n++){
+                        var p1 = Math.atan2(x, z)
+                        var p2 = -Math.acos(y / (Math.hypot(x,y,z)+.00001))-Math.PI/2
+                        for(var n=0; n<4; n++){
+                          var x1 = S(p=Math.PI*2/2*n+shape.roll+Math.PI/2) * 8
+                          var y1 = C(p) * 8
+                          var z1 = -8
+                          p = Math.atan2(y1,z1) + p2
+                          d = Math.hypot(y1,z1)
+                          y1 = S(p) * d
+                          z1 = C(p) * d
+                          p = Math.atan2(x1,z1) + p1
+                          d = Math.hypot(x1,z1)
+                          x1 = S(p) * d
+                          z1 = C(p) * d
                           SpawnSmoke(
-                                     ship.x - ship.vx/5*n - x,
-                                     ship.y - ship.vy/5*n - y,
-                                     ship.z - ship.vz/5*n - z )
+                             x1 + ship.x - ship.vx/4*n - x,
+                             y1 + ship.y - ship.vy/4*n - y,
+                             z1 + ship.z - ship.vz/4*n - z )
                         }
                       }
                         
@@ -2113,7 +2190,7 @@
                     }
                   }
                 }
-                shape.roll += .02 * (launched ? 5 : 1)
+                shape.roll += .02 * (launched ? 10 : 1)
                 renderer.Draw(shape)
               }
             break
@@ -2160,6 +2237,7 @@
               el.style.cursor = 'crosshair'
             })
           }
+          var hoverTrigger = false
           blackholes.map((v, i) => {
             if(v.x != 1e5){
               x = v.x
@@ -2174,10 +2252,11 @@
                 var bz = ar[2]
                 var s = 140 * v.mass
                 var n = 1+v.mass/140
-                if((d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
-                    (v.hover && -y < 80*n && -y > 0*n &&
+                if(!hoverTrigger &&
+                  (d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
+                    (v.hover && -y < 80*n && -y > -90*n &&
                     x > -140 && x < 140)){
-                  v.hover = true
+                  hoverTrigger = v.hover = true
                   
                   if(!buttonHover)
                     document.querySelectorAll('canvas').forEach(el => {
