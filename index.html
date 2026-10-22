@@ -52,6 +52,9 @@
         overflow: hidden;
         display: none;
       }
+      canvas{
+        cursor: crosshair;
+      }
       hr{
        line-height: 0;
        height: 0;
@@ -83,12 +86,32 @@
       }
       #header{
         height: 34px;
-        background: linear-gradient(-90deg, #444, #444, #333, #333, #111, #111, #111, #111,#200,#400);
-        border-top: 1px solid #fff4;
+        background: linear-gradient(-90deg, #444, #444, #333, #333, #111, #111, #111, #111,#200,#400,#400);
+        border-top: 1px solid #333;
         border-bottom: 1px solid #500;
       }
       #footerControlCluster{
         text-align: center;
+      }
+      .sidebars{
+        position: fixed;
+        width: 10px;
+        height: 100vh;
+        z-index: 200;
+      }
+      #leftSidebar{
+        background: linear-gradient(180deg, #400, #400, #444, #444);
+        border-top: 1px solid #333;
+        left: 0;
+        top: 0;
+      }
+      #rightSidebar{
+        background: linear-gradient(180deg, #444, #444, #111, #111);
+        border-top: 1px solid #333;
+        right: 0;
+        top: 0;
+      }
+      #levelName{
       }
       #footer{
         height: 68px;
@@ -98,9 +121,9 @@
       }
       #headerTitle{
         color: #ba8;
-        transform: scale(1.75, 1.0);
+        transform: scale(1.5, 1.0);
         display: inline-block;
-        margin-left: 100px;
+        margin-left: 80px;
         font-style: italic;
         font-weight: 900;
         text-shadow: 0px 0px 5px #f00;
@@ -149,7 +172,7 @@
         vertical-align: top;
         color: #feb
       }
-      .footerElement{
+      .headerElement, .footerElement{
         margin-left: 3px;
         color: #feb;
         background: #000;
@@ -187,7 +210,7 @@
         border-bottom: 3px solid #543;
         text-shadow: 2px 2px 2px #120;
       }
-      .footerButton{
+      .headerButton, .footerButton{
         vertical-align: top;
         font-family: Play;
         font-size: 20px;
@@ -215,7 +238,30 @@
     ></div>
     <div id="header">
       <div id="headerTitle">HOLEPUNCH 3D</div>
+      <div
+        class="headerElement"
+        style="float: right; margin-right: 10px"
+      >
+        LEVEL
+        <div
+          id="levelName"
+          class="infoContent"
+        ></div>
+      </div>
+      <button
+        class="headerButton"
+        style="float: right; margin-top: 3px; margin-right: 10px;"
+        id="helpButton"
+        onclick="window.ShowHotkeys()"
+        onmouseover="window.hovering = true"
+        onmouseout="window.hovering = false"
+        title="show hot keys & instructions"
+      >
+        ?
+      </button>
     </div>
+    <div class="sidebars" id="leftSidebar"></div>
+    <div class="sidebars" id="rightSidebar"></div>
     <div id="hotkeys">
       <button
         class="buttons closeButton"
@@ -234,13 +280,22 @@
     </div>
     <div id="footer">
       <div id="footerControlCluster">
-        <div class="footerElement" >
-          LEVEL
+        <span class="menuLabel">
+          MASS
+        </span>
+        <div class="footerElement massMeterContainer" >
           <div
-            id="levelName"
+            id="massMeter"
             class="infoContent"
           ></div>
         </div>
+        <div class="footerElement" style="min-width: unset">
+          <div
+            class="infoContent"
+            id="massNumeric"
+          ></div>
+        </div>
+        <hr>
         <button
           class="footerButton"
           id="launchButton"
@@ -269,22 +324,6 @@
         >
           UNDO
         </button>
-        <hr>
-        <span class="menuLabel">
-          MASS
-        </span>
-        <div class="footerElement massMeterContainer" >
-          <div
-            id="massMeter"
-            class="infoContent"
-          ></div>
-        </div>
-        <div class="footerElement" style="min-width: unset">
-          <div
-            class="infoContent"
-            id="massNumeric"
-          ></div>
-        </div>
         <span class="menuLabel">
           HOLES
         </span>
@@ -294,16 +333,6 @@
             class="infoContent"
           ></div>
         </div>
-        <button
-          class="footerButton"
-          id="helpButton"
-          onclick="window.ShowHotkeys()"
-          onmouseover="window.hovering = true"
-          onmouseout="window.hovering = false"
-          title="show hot keys & instructions"
-        >
-          ?
-        </button>
       </div>
     </div>
     <script type="module">
@@ -353,14 +382,28 @@
         deathScreen.src = URL.createObjectURL(data)
       })
       
+      var decButton = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/decButton.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        decButton.src = URL.createObjectURL(data)
+      })
+      
+      var incButton = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/incButton.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        incButton.src = URL.createObjectURL(data)
+      })
+      
       
       var S = Math.sin
       var C = Math.cos
       var Rn = Math.random
       
-      var x, y, z, p, q, d
+      var x, y, z, p, q, d, l
       
       Coordinates.AnimationLoop(renderer, 'Draw')
+
+      var boundingBoxSize = 1e3/4
 
       var shaderOptions = [
         {lighting: {type: 'ambientLight', value: .33}},
@@ -600,9 +643,9 @@
         name: 'cube grid',
         disableDepthTest: true,
         alpha: .9,
-        scaleX: 1e3,
-        scaleY: 1e3,
-        scaleZ: 1e3,
+        scaleX: boundingBoxSize,
+        scaleY: boundingBoxSize,
+        scaleZ: boundingBoxSize,
         colorMix: 0,
       }
       if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -619,9 +662,9 @@
         //map: 'https://srmcgann.github.io/holepunch3D/axisMarker.png',
         name: 'axis marker',
         colorMix: 0,
-        scaleX: 1e3,
-        scaleY: 1e3,
-        scaleZ: 1e3,
+        scaleX: boundingBoxSize/2,
+        scaleY: boundingBoxSize/2,
+        scaleZ: boundingBoxSize/2,
         //subs: 2,
         //sphereize: 1,
         disableDepthTest: true,
@@ -903,7 +946,7 @@
       var blackholeVerts
       var geoOptions = {
         shapeType: 'rect',
-        map: 'https://srmcgann.github.io/holepunch3D/blackhole_new.png',
+        map: 'https://srmcgann.github.io/holepunch3D/blackhole.png',
         name: 'blackhole',
         alpha: .9,
         disableDepthTest: true,
@@ -1000,7 +1043,7 @@
       }
 
       var accel
-      var maxDist = 1e3
+      var maxDist = boundingBoxSize
       const DoKeys = () => {
         accel = keys[16] ? 3 : 1
         keys.map((state, key) => {
@@ -1114,7 +1157,7 @@
               if(el.id != 'launchButton') el.style.display = 'none'
             })
           }else{
-            LevelReset()
+            LevelReset(true)
           }
         }
       }
@@ -1130,14 +1173,14 @@
         document.querySelectorAll('.closeButton')[0].focus()
       }
       
-      const LevelReset = () => {
+      const LevelReset = (fullReset = false) => {
         document.querySelector('#launchButton').style.background='#f80'
         document.querySelector('#launchButton').style.color='#fff'
         document.querySelector('#launchButton').innerHTML = 'LAUNCH'
         document.querySelectorAll('.footerButton').forEach(el => {
           el.style.display = 'inline-block'
         })
-        LoadLevel(level)
+        LoadLevel(level, fullReset)
       }
       
       const UnloadFPS = async () => {
@@ -1156,7 +1199,7 @@
       
       const Init = () => {
         level = 1
-        predictiveLength = 400
+        predictiveLength = 200
         modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
@@ -1178,16 +1221,39 @@
             bhIdx%=iPc
           }
           addingMass = false
+          blackholes.map(v=>v.dragging = false)
+        }
+        
+        window.onmousemove = e => {
+          if(alive && !launched){
+            if((l = blackholes.filter(v=>v.dragging)).length) {
+              l[0].dragging = true
+              l[0].x = cursor.x
+              l[0].y = cursor.y
+              l[0].z = cursor.z
+            }
+          }
         }
         
         window.onmousedown = e => {
-
           if(!alive){
              LevelReset()
-           }else{
+          }else{
             if(AxisMarkersVisible() &&
                e.button == 0 && renderer.cameraMode != 'fps') {
-              if(alive && !launched) SpawnBlackHole()
+              if(alive && !launched){
+                if((l = blackholes.filter(v=>v.hover)).length) {
+                  if(l[0].buttonHover){
+                  }else{
+                    l[0].dragging = true
+                    l[0].x = cursor.x
+                    l[0].y = cursor.y
+                    l[0].z = cursor.z
+                  }
+                }else{
+                  SpawnBlackHole()
+                }
+              }
             }
           }
         }
@@ -1232,7 +1298,8 @@
         
         window.onmousewheel = e => {
           cursorDist -= e.deltaY / 25
-          cursorDist = Math.min(1e3, Math.max(-1e3, cursorDist))
+          cursorDist = Math.min(boundingBoxSize, 
+                         Math.max(-boundingBoxSize, cursorDist))
         }
         window.onmouseout = () => {
           hasMouse = false
@@ -1260,7 +1327,10 @@
           x = 1e5
           y = 1e5
           z = 1e5
-          return { x, y, z, mass: 10 }
+          return { x, y, z, mass: 10,
+                   hover: false,
+                   dragging: false,
+                   buttonHover: false}
         })
       }
       
@@ -1270,17 +1340,19 @@
       var massNumericEl = document.querySelector("#massNumeric")
       var holeCountEl = document.querySelector("#holeCount")
       var blackholes, screenAlpha
-      const LoadLevel = level => {
+      const LoadLevel = (level, initBlackHoles=true) => {
       
         var initShipX, initShipY, initShipZ
         var initShipVx, initShipVy, initShipVz
         UnloadFPS()
         smoke = []
         particles = []
-        bhIdx = 0
         unDid = false
         window.hovering = false
-        InitBlackHoles()
+        if(initBlackHoles){
+          bhIdx = 0
+          InitBlackHoles()
+        }
         var shipShape = shapes.filter(v=>v.name == 'ship')[0]
         shipShape.x = 0
         shipShape.y = 0
@@ -1290,7 +1362,7 @@
         shipShape.yaw = Math.PI
         screenAlpha = 0
         
-        shipSteps = 3
+        shipSteps = 4
         
         //SpawnBlackHole(0,20,0,5)
         //bhIdx++
@@ -1310,7 +1382,7 @@
             cursorDist = 100
 
             SpawnTarget(100, 0, 0)
-            initShipX = -300
+            initShipX = -250
             initShipY = 0
             initShipZ = 0
             
@@ -1321,7 +1393,7 @@
             renderer.pitch = -Math.PI/2
             renderer.x = 0
             renderer.y = 0
-            renderer.z = 300
+            renderer.z = 200
             var ap = renderer.ActualPosition()
             cameras[0].x = ap.x
             cameras[0].y = ap.y
@@ -1374,15 +1446,18 @@
           !document.pointerLockElement && alive && !launched
       }
 
+      var mx, my
       const ProcessScratchCanvas = () => {
       
         ctx.clearRect(0,0,w,h)
         if(hasMouse){
-          ctx.fillStyle= '#f00'
+          
+          mx = renderer.mouseX
+          my = renderer.mouseY
+          /*ctx.fillStyle= '#f00'
           var s = 10
-          var mx = renderer.mouseX
-          var my = renderer.mouseY
           ctx.fillRect(mx-s/2,my-s/2,s,s)
+          */
           
           
           if(AxisMarkersVisible()){
@@ -1395,6 +1470,7 @@
             var vy = -(my-h/2)/fac
             var vz = 0
             var x1, y1, z1, x2, y2, z2
+            var bbs = boundingBoxSize
             switch(axis){
               case 'X': case '-X':
                 x1 = ap.z
@@ -1404,10 +1480,10 @@
                 y2 = y1 + (vy - y1) * 100
                 z2 = z1 + (vz - z1) * 100
                 poly = [
-                  [-1e3, -1e3, 0],
-                  [1e3, -1e3, 0],
-                  [1e3, 1e3, 0],
-                  [-1e3, 1e3, 0],
+                  [-boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, boundingBoxSize, 0],
+                  [-boundingBoxSize, boundingBoxSize, 0],
                 ]
                 ar=Coordinates.PointInPoly3D(x1, y1, z1,
                                              x2, y2, z2,
@@ -1421,10 +1497,10 @@
                 y2 = y1 + (vy - y1) * 100
                 z2 = z1 + (vz - z1) * 100
                 poly = [
-                  [-1e3, -1e3, 0],
-                  [1e3, -1e3, 0],
-                  [1e3, 1e3, 0],
-                  [-1e3, 1e3, 0],
+                  [-boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, boundingBoxSize, 0],
+                  [-boundingBoxSize, boundingBoxSize, 0],
                 ]
                 ar=Coordinates.PointInPoly3D(x1, y1, z1,
                                              x2, y2, z2,
@@ -1438,10 +1514,10 @@
                 y2 = y1 + (vy - y1) * 100
                 z2 = z1 + (vz - z1) * 100
                 poly = [
-                  [-1e3, -1e3, 0],
-                  [1e3, -1e3, 0],
-                  [1e3, 1e3, 0],
-                  [-1e3, 1e3, 0],
+                  [-boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, boundingBoxSize, 0],
+                  [-boundingBoxSize, boundingBoxSize, 0],
                 ]
                 ar=Coordinates.PointInPoly3D(x1, y1, z1,
                                              x2, y2, z2,
@@ -1483,9 +1559,9 @@
               cursor.z = z
             }
             
-            cursor.x = Math.min(1e3, Math.max(-1e3, cursor.x))
-            cursor.y = Math.min(1e3, Math.max(-1e3, cursor.y))
-            cursor.z = Math.min(1e3, Math.max(-1e3, cursor.z))
+            cursor.x = Math.min(boundingBoxSize, Math.max(-boundingBoxSize, cursor.x))
+            cursor.y = Math.min(boundingBoxSize, Math.max(-boundingBoxSize, cursor.y))
+            cursor.z = Math.min(boundingBoxSize, Math.max(-boundingBoxSize, cursor.z))
             
             /*
             var shape = shapes.filter(v=>v.name == 'test marker')
@@ -1521,7 +1597,7 @@
               var dx1 = (v.x - x1) 
               var dy1 = (v.y - y1) 
               var dz1 = (v.z - z1) 
-              d = (d_=Math.hypot(dx1, dy1, dz1)) ** 2.5 / 10
+              d = (d_=Math.hypot(dx1, dy1, dz1)) ** 3
               vx += dx1 / d * grav * v.mass
               vy += dy1 / d * grav * v.mass
               vz += dz1 / d * grav * v.mass
@@ -1552,7 +1628,7 @@
       
       var homing = 100
       var drag = 4
-      var grav = .2
+      var grav = 2
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -1598,7 +1674,7 @@
           screenAlpha += .01
           screenAlpha = Math.min(.75, screenAlpha)
           Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
-          Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/4,h/2-h/4,w/2,h/2)
+          Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
           /*
           Coordinates.Overlay.ctx.globalAlpha = screenAlpha
           Coordinates.Overlay.ctx.fillStyle = '#400c'
@@ -1665,10 +1741,10 @@
               var colors = shape.shader.datasets[0].optionalAttributes[0].value
               for(var i = 0; i < shape.vertices.length; i +=3){
                 var idx = i/3
-                var pDrag = 1.1
+                var pDrag = 1.05
                 if(idx < particles.length){
                   var pt = particles[idx]
-                  pt.life -= .01
+                  pt.life -= .0025
                   shape.vertices[i+0] = pt.x += pt.vx /= pDrag
                   shape.vertices[i+1] = pt.y += pt.vy /= pDrag
                   shape.vertices[i+2] = pt.z += pt.vz /= pDrag
@@ -1732,10 +1808,72 @@
                 }
               }
               shape.shapeData.map((subShape, sIdx) => {
-                subShape.x = blackholes[sIdx].x - subShape.ox
-                subShape.y = blackholes[sIdx].y - subShape.oy
-                subShape.z = blackholes[sIdx].z - subShape.oz
+                x = blackholes[sIdx].x
+                y = blackholes[sIdx].y
+                z = blackholes[sIdx].z
+                subShape.x = x - subShape.ox
+                subShape.y = y - subShape.oy
+                subShape.z = z - subShape.oz
+                
+                if(alive && !launched && !addingMass){
+                  if(blackholes[sIdx].hover){
+                    var ar = Coordinates.GetShaderCoord(
+                      x + shape.x, y+shape.y, z+shape.z,{
+                      x:0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0,
+                    }, renderer)
+                    if(ar){
+                      var bh = blackholes[sIdx]
+                      bh.buttonHover = false
+                      var ctx = Coordinates.Overlay.ctx
+                      ctx.textAlign = 'center'
+                      ctx.fillStyle = '#0ffb'
+                      ctx.strokeStyle = '#000b'
+                      var fs = 2.75 * (10+bh.mass/2.75)
+                      ctx.font = fs + 'px Play'
+                      ctx.lineWidth = 3
+                      ctx.strokeText('[  ]', ar[0], ar[1] + fs/3.75)
+                      ctx.fillText('[  ]', ar[0], ar[1] + fs/3.75)
+                      var fs2 = 32
+                      ctx.font = fs2 + 'px Play'
+                      ctx.fillText(`mass ${bh.mass}`,
+                            x = ar[0], y = ar[1] + fs/2 + fs2)
+                      ctx.fillStyle = '#f808'
+                      var s = 50
+                      ctx.drawImage(decButton, x-s/2 - 100, y-s/2, s, s)
+                      ctx.drawImage(incButton, x-s/2 + 100, y-s/2, s, s)
 
+                      s = bh.mass
+                      Coordinates.Overlay.ctx.fillStyle = '#0f08'
+                      var x1 = ar[0]-100-25
+                      var y1 = ar[1]+s/2-5+25
+                      var x2 = x1 + 50
+                      var y2 = y1 + 50
+                      if(mx>x1 && mx<x2 && my>y1 && my<y2){
+                        bh.buttonHover = true
+                        document.querySelectorAll('canvas').forEach(el=>{
+                          el.style.cursor = 'pointer'
+                        })
+                      }
+                      var x1 = ar[0]+100-25
+                      var y1 = ar[1]+s/2-5+25
+                      var x2 = x1 + 50
+                      var y2 = y1 + 50
+                      if(mx>x1 && mx<x2 && my>y1 && my<y2){
+                        bh.buttonHover = true
+                        document.querySelectorAll('canvas').forEach(el=>{
+                          el.style.cursor = 'pointer'
+                        })
+                      }
+                      /*
+                      Coordinates.Overlay.ctx.fillRect(
+                                 ar[0]-100-25, ar[1]+s/2-5+25,50,50)
+                      Coordinates.Overlay.ctx.fillRect(
+                                 ar[0]+100-25, ar[1]+s/2-5+25,50,50)
+                      */
+
+                    }
+                  }
+                }
                 subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
                 subShape.yaw   = (-renderer.yaw) - shape.yaw
                 subShape.roll += .005 * (sIdx %2 ? -1 : 1)
@@ -1760,81 +1898,92 @@
               renderer.Draw(shape)
             break
             case 'lines':
-              var colors = shape.shader.datasets[0].optionalAttributes[0].value
-              for(var i = 0; i < shipSteps; i++){
-                var x1 = ship.x
-                var y1 = ship.y
-                var z1 = ship.z
-                var el = shapes.filter(v=>v.name=='ship')[0]
-                var vx = ship.vx
-                var vy = ship.vy
-                var vz = ship.vz
-                var ptch = -el.pitch
-                var yw = el.yaw
-                var collision = false
-                for(var j = 0; j < shape.vertices.length; j += 6){
-                  if(j < 6*predictiveLength){
-                    var idx = j
-                    if(!collision){
-                      var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
-                      x1 = ar.x1
-                      y1 = ar.y1
-                      z1 = ar.z1
-                      vx = ar.vx
-                      vy = ar.vy
-                      vz = ar.vz
-                      if(ar.collision){
-                        collision = true
+              if(!launched && alive){
+                var colors = shape.shader.datasets[0].optionalAttributes[0].value
+                for(var i = 0; i < shipSteps; i++){
+                  var x1 = ship.x
+                  var y1 = ship.y
+                  var z1 = ship.z
+                  var el = shapes.filter(v=>v.name=='ship')[0]
+                  var vx = ship.vx
+                  var vy = ship.vy
+                  var vz = ship.vz
+                  var ptch = -el.pitch
+                  var yw = el.yaw
+                  var collision = false
+                  for(var j = 0; j < shape.vertices.length; j += 6){
+                    if(j < 6*predictiveLength){
+                      var idx = j
+                      if(!collision){
+                        var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
+                        x1 = ar.x1
+                        y1 = ar.y1
+                        z1 = ar.z1
+                        vx = ar.vx
+                        vy = ar.vy
+                        vz = ar.vz
+                        if(ar.collision){
+                          collision = true
+                          shape.vertices[idx+0] = 0
+                          shape.vertices[idx+1] = 0
+                          shape.vertices[idx+2] = 0
+                          shape.vertices[idx+3] = 0
+                          shape.vertices[idx+4] = 0
+                          shape.vertices[idx+5] = 0
+                        }else{
+                          var x2 = x1 + vx
+                          var y2 = y1 + vy
+                          var z2 = z1 + vz
+
+                          x2 = x1 + vx
+                          y2 = y1 + vy
+                          z2 = z1 + vz
+                          shape.vertices[idx+0] = -x1
+                          shape.vertices[idx+1] = y1
+                          shape.vertices[idx+2] = z1
+                          shape.vertices[idx+3] = -x2
+                          shape.vertices[idx+4] = y2
+                          shape.vertices[idx+5] = z2
+                          
+                          x1 = x2
+                          y1 = y2
+                          z1 = z2
+                          
+                          /*
+                          d = Math.hypot(vx, vy, vz)
+                          var rgb = Coordinates.HSVToRGB(d*20,d**2/2,.5+Math.min(.5,d**2/2))
+                          var red = rgb[0] / 256
+                          var green = rgb[1] / 256
+                          var blue = rgb[2] / 256
+                          for(var m = 2*3; m--;){
+                            var idx2 = idx/6*8*3 + m*4
+                            colors[idx2 + 0] = red
+                            colors[idx2 + 1] = green
+                            colors[idx2 + 2] = blue
+                            colors[idx2 + 3] = 1
+                          }
+                          */
+                          for(var m = 2*3; m--;){
+                            var idx2 = idx/6*8*3 + m*4
+                            colors[idx2 + 0] = 1
+                            colors[idx2 + 1] = 1
+                            colors[idx2 + 2] = 1
+                            colors[idx2 + 3] = .5
+                          }
+                        }
+                      }else{
                         shape.vertices[idx+0] = 0
                         shape.vertices[idx+1] = 0
                         shape.vertices[idx+2] = 0
                         shape.vertices[idx+3] = 0
                         shape.vertices[idx+4] = 0
                         shape.vertices[idx+5] = 0
-                      }else{
-                        var x2 = x1 + vx
-                        var y2 = y1 + vy
-                        var z2 = z1 + vz
-
-                        x2 = x1 + vx
-                        y2 = y1 + vy
-                        z2 = z1 + vz
-                        shape.vertices[idx+0] = -x1
-                        shape.vertices[idx+1] = y1
-                        shape.vertices[idx+2] = z1
-                        shape.vertices[idx+3] = -x2
-                        shape.vertices[idx+4] = y2
-                        shape.vertices[idx+5] = z2
-                        
-                        x1 = x2
-                        y1 = y2
-                        z1 = z2
-                        
-                        d = Math.hypot(vx, vy, vz)
-                        var rgb = Coordinates.HSVToRGB(d*20,d**2/2,.5+Math.min(.5,d**2/2))
-                        var red = rgb[0] / 256
-                        var green = rgb[1] / 256
-                        var blue = rgb[2] / 256
-                        for(var m = 2*3; m--;){
-                          var idx2 = idx/6*8*3 + m*4
-                          colors[idx2 + 0] = red
-                          colors[idx2 + 1] = green
-                          colors[idx2 + 2] = blue
-                          colors[idx2 + 3] = 1
-                        }
                       }
-                    }else{
-                      shape.vertices[idx+0] = 0
-                      shape.vertices[idx+1] = 0
-                      shape.vertices[idx+2] = 0
-                      shape.vertices[idx+3] = 0
-                      shape.vertices[idx+4] = 0
-                      shape.vertices[idx+5] = 0
                     }
                   }
                 }
+                renderer.Draw(shape)
               }
-              renderer.Draw(shape)
             break
             case 'axis marker':
               if(AxisMarkersVisible()){
@@ -1855,23 +2004,23 @@
                   switch(sIdx){
                     case 0:
                       subShape.x = 0
-                      subShape.y = Math.min(1e3,
-                             Math.max(-1e3, cursor.y))
-                      subShape.z =  Math.min(1e3,
-                             Math.max(-1e3, cursor.z))
+                      subShape.y = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.y))
+                      subShape.z =  Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.z))
                     break
                     case 1:
-                      subShape.x = Math.min(1e3,
-                             Math.max(-1e3, cursor.x))
+                      subShape.x = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.x))
                       subShape.y = 0
-                      subShape.z = Math.min(1e3,
-                             Math.max(-1e3, cursor.z))
+                      subShape.z = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.z))
                     break
                     case 2:
-                      subShape.x = Math.min(1e3,
-                             Math.max(-1e3, cursor.x))
-                      subShape.y = Math.min(1e3,
-                             Math.max(-1e3, cursor.y))
+                      subShape.x = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.x))
+                      subShape.y = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.y))
                       subShape.z = 0
                     break
                   }
@@ -1884,85 +2033,89 @@
             break
             case 'ship':
               var shipDrag = 1.000001
-              for(var i = 0; i < shipSteps; i++){
-                if(launched){
-                  if(alive){
-                    var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
-                    ship.x = ar.x1
-                    ship.y = ar.y1
-                    ship.z = ar.z1
-                    ship.vx = ar.vx
-                    ship.vy = ar.vy
-                    ship.vz = ar.vz
-                    if(ar.collision) {
-                      SpawnSplosion(ship.x, ship.y, ship.z)
-                      alive = false
-                    }
-                  }
-                  if(alive){
-                    var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
-                    var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
-                    
-                    shape.yaw = p1
-                    shape.pitch = p2
-                    
-                    if(alive && launched){
-                      shape.x = ship.x += ship.vx
-                      shape.y = ship.y += ship.vy
-                      shape.z = ship.z += ship.vz
-                    }
-                    //ship.vx /= drag
-                    //ship.vy /= drag
-                    //ship.vz /= drag
-                    if(ship.x > 1e3 || ship.x < -1e3 ||
-                       ship.y > 1e3 || ship.y < -1e3 ||
-                       ship.z > 1e3 || ship.z < -1e3){
-                       alive = false
-                       renderer.useKeys = false
-                       //shipView = false
-                    }
-                    d = Math.hypot(ship.vx, ship.vy, ship.vz)
-                    if(alive && d > .01 && Rn() < 1){
-                      x = ship.vx / d * 3
-                      y = ship.vy / d * 3
-                      z = ship.vz / d * 3
-                      for(var n=0; n<5; n++){
-                        SpawnSmoke(
-                                   ship.x - ship.vx/5*n - x,
-                                   ship.y - ship.vy/5*n - y,
-                                   ship.z - ship.vz/5*n - z )
+              if(alive){
+                for(var i = 0; i < shipSteps; i++){
+                  if(launched){
+                    if(alive){
+                      var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
+                      ship.x = ar.x1
+                      ship.y = ar.y1
+                      ship.z = ar.z1
+                      ship.vx = ar.vx
+                      ship.vy = ar.vy
+                      ship.vz = ar.vz
+                      if(ar.collision) {
+                        SpawnSplosion(ship.x, ship.y, ship.z)
+                        alive = false
                       }
                     }
+                    if(alive){
+                      var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
+                      var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
                       
-                    if(shipView){
-                      var shipCamDist = 100
-                      var shipCamTracking = 12
-                      var vecx = 0
-                      var vecy = 0
-                      var vecz = shipCamDist
-                      ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
-                      p = Math.atan2(vecy, vecz) + shape.pitch + .5
-                      d = Math.hypot(vecy, vecz)
-                      vecy = S(p) * d
-                      vecz = C(p) * d
-                      ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
-                      p = Math.atan2(vecx, vecz) + shape.yaw
-                      d = Math.hypot(vecx, vecz)
-                      vecx = S(p) * d
-                      vecz = C(p) * d
-                      ship.vecx += (vecx - ship.vecx) / shipCamTracking
-                      ship.vecy += (vecy - ship.vecy) / shipCamTracking
-                      ship.vecz += (vecz - ship.vecz) / shipCamTracking
-                      renderer.x = -ship.x - ship.vecx
-                      renderer.y = -ship.y - ship.vecy + 40
-                      renderer.z = -ship.z - ship.vecz
-                      renderer.yaw = -shape.yaw + Math.PI
-                      renderer.pitch = shape.pitch
+                      shape.yaw = p1
+                      shape.pitch = p2
+                      
+                      if(alive && launched){
+                        shape.x = ship.x += ship.vx
+                        shape.y = ship.y += ship.vy
+                        shape.z = ship.z += ship.vz
+                      }
+                      //ship.vx /= drag
+                      //ship.vy /= drag
+                      //ship.vz /= drag
+                      if(ship.x > boundingBoxSize || ship.x < -boundingBoxSize ||
+                         ship.y > boundingBoxSize || ship.y < -boundingBoxSize ||
+                         ship.z > boundingBoxSize || ship.z < -boundingBoxSize){
+                         alive = false
+                         SpawnSplosion(ship.x, ship.y, ship.z)
+                         renderer.useKeys = false
+                         //shipView = false
+                      }
+                      d = Math.hypot(ship.vx, ship.vy, ship.vz)
+                      if(alive && d > .01 && Rn() < 1){
+                        x = ship.vx / d * 3
+                        y = ship.vy / d * 3
+                        z = ship.vz / d * 3
+                        for(var n=0; n<5; n++){
+                          SpawnSmoke(
+                                     ship.x - ship.vx/5*n - x,
+                                     ship.y - ship.vy/5*n - y,
+                                     ship.z - ship.vz/5*n - z )
+                        }
+                      }
+                        
+                      if(shipView){
+                        var shipCamDist = 100
+                        var shipCamTracking = 12
+                        var vecx = 0
+                        var vecy = 0
+                        var vecz = shipCamDist
+                        ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
+                        p = Math.atan2(vecy, vecz) + shape.pitch + .5
+                        d = Math.hypot(vecy, vecz)
+                        vecy = S(p) * d
+                        vecz = C(p) * d
+                        ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
+                        p = Math.atan2(vecx, vecz) + shape.yaw
+                        d = Math.hypot(vecx, vecz)
+                        vecx = S(p) * d
+                        vecz = C(p) * d
+                        ship.vecx += (vecx - ship.vecx) / shipCamTracking
+                        ship.vecy += (vecy - ship.vecy) / shipCamTracking
+                        ship.vecz += (vecz - ship.vecz) / shipCamTracking
+                        renderer.x = -ship.x - ship.vecx
+                        renderer.y = -ship.y - ship.vecy + 40
+                        renderer.z = -ship.z - ship.vecz
+                        renderer.yaw = -shape.yaw + Math.PI
+                        renderer.pitch = shape.pitch
+                      }
                     }
                   }
                 }
+                shape.roll += .02 * (launched ? 5 : 1)
+                renderer.Draw(shape)
               }
-              renderer.Draw(shape)
             break
             case 'target':
               if(0){
@@ -1989,7 +2142,7 @@
               renderer.Draw(shape)
             break
             case 'cursor':
-              if(!launched && alive) renderer.Draw(shape)
+              //if(!launched && alive) renderer.Draw(shape)
             break
             case 'main':
               renderer.Draw(shape)
@@ -1999,6 +2152,44 @@
             break
           }
         })
+        
+        if(alive && !launched){
+          var buttonHover = !!blackholes.filter(v=>v.buttonHover).length
+          if(!buttonHover){
+            document.querySelectorAll('canvas').forEach(el => {
+              el.style.cursor = 'crosshair'
+            })
+          }
+          blackholes.map((v, i) => {
+            if(v.x != 1e5){
+              x = v.x
+              y = v.y
+              z = v.z
+              var ar = Coordinates.GetShaderCoord(x,y,z,{
+                x:0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0,
+              }, renderer)
+              if(ar){
+                var bx = ar[0]
+                var by = ar[1]
+                var bz = ar[2]
+                var s = 140 * v.mass
+                var n = 1+v.mass/140
+                if((d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
+                    (v.hover && -y < 80*n && -y > 0*n &&
+                    x > -140 && x < 140)){
+                  v.hover = true
+                  
+                  if(!buttonHover)
+                    document.querySelectorAll('canvas').forEach(el => {
+                      el.style.cursor = 'move'
+                    })
+                }else{
+                  if(!v.dragging) v.hover = false
+                }
+              }
+            }
+          })
+        }
         
         if(misplaced.timer > t){
           misplacedShape.x = misplaced.x
