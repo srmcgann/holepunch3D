@@ -2,6 +2,9 @@
   link https://notoriousbfg.com/hole-punch
   
   to do:
+    sound effects
+    ✔ add / remove / delete blackholes
+    ✔ set / change blackhole mass
     ✔ undo button
     ✔ reset button
     ✔ ship camera-view toggle
@@ -21,9 +24,6 @@
     quick "axis-view" switching (make it the only option?)
       OR multi-view display
     target contact detection and level advancement
-    add / remove / delete blackholes
-    set / change blackhole mass
-    quick change view X/Y/Z
     smart camera mode - tracks ship from non-ship position
     ship-tracking camera mode for attempts
     levels
@@ -210,6 +210,9 @@
         border-bottom: 3px solid #543;
         text-shadow: 2px 2px 2px #120;
       }
+      .headerButton:focus, .footerButton:focus{
+        outline: none;
+      }
       .headerButton, .footerButton{
         vertical-align: top;
         font-family: Play;
@@ -338,8 +341,8 @@
     <script type="module">
 
       import * as Coordinates from
-      "https://srmcgann.github.io/Coordinates/coordinates.min.js?2"
-      //"https://cantelope42.github.io/tempppppp/coordinates.js?3"
+      "https://cantelope42.github.io/tempppppp/coordinates.js?3"
+      //"https://srmcgann.github.io/Coordinates/coordinates.min.js?2"
 
       var rendererOptions = {
         ambientLight: .5, margin: 10, fit: 'cover',
@@ -361,9 +364,81 @@
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
       //var refTexture = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/pathway_morning.jpg'
       
-      var showBackground = true
+      var showBackground = false
       var playbackSpeed = 2
       
+      var increase = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/increase.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        increase.loop = false
+        increase.volume = .8
+        increase.src = URL.createObjectURL(data)
+      })
+
+      var alarm = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/alarm.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        alarm.loop = false
+        alarm.volume = .8
+        alarm.src = URL.createObjectURL(data)
+      })
+
+      var jet = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/jet.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        jet.loop = false
+        jet.volume = .8
+        jet.src = URL.createObjectURL(data)
+      })
+
+      var splode = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/splode.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        splode.loop = false
+        splode.volume = .8
+        splode.src = URL.createObjectURL(data)
+      })
+
+      var splode2 = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/splode2.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        splode2.loop = false
+        splode2.volume = .8
+        splode2.src = URL.createObjectURL(data)
+      })
+
+      var decrease = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/decrease.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        decrease.loop = false
+        decrease.volume = .8
+        decrease.src = URL.createObjectURL(data)
+      })
+
+      var destroy = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/destroy.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        destroy.loop = false
+        destroy.volume = .8
+        destroy.src = URL.createObjectURL(data)
+      })
+
+      var misclick = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/misclick.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        misclick.loop = false
+        misclick.volume = .8
+        misclick.src = URL.createObjectURL(data)
+      })
+
+      var strum = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/strum.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        strum.loop = false
+        strum.volume = .8
+        strum.src = URL.createObjectURL(data)
+      })
+
       var HUD = new Image()
       var url = 'https://srmcgann.github.io/holepunch3D/HUD_teal.png'
       await fetch(url).then(res=>res.blob()).then(data => {
@@ -582,7 +657,7 @@
 
 
       var iSmokec = 5e3
-      var iSmokev = .04
+      var iSmokev = .075
       var particleColors = []
       Array(iSmokec).fill().map((v, i) => {
         var rgb   = Coordinates.HSVToRGB(360/iSmokec*i, 1, 1)
@@ -941,7 +1016,7 @@
         rotationMode: 2,
         scaleX: 1,
         scaleY: 1,
-        scaleZ: 1,
+        scaleZ: 2,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -952,7 +1027,7 @@
       var blackholeVerts
       var geoOptions = {
         shapeType: 'rect',
-        map: 'https://srmcgann.github.io/holepunch3D/blackhole.png',
+        map: 'https://srmcgann.github.io/holepunch3D/blackhole_new.png',
         name: 'blackhole',
         alpha: .9,
         disableDepthTest: true,
@@ -1142,7 +1217,14 @@
             blackholes[bhIdx].z = cursor.z
             blackholes[bhIdx].mass = 10
             massAvailable -= 10
+            strum.pause()
+            strum.currentTime = 0
+            strum.play()
+            
           }else{
+            misclick.pause()
+            misclick.currentTime = 0
+            misclick.play()
             misplaced.timer = renderer.frameCount/60 + 1
             misplaced.x = cursor.x
             misplaced.y = cursor.y
@@ -1154,8 +1236,14 @@
       window.Launch = () => {
         if(blackholes.filter(v=>v.x!=1e5).length ||
              Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
-          UnloadFPS()
+          //if(!shipView) UnloadFPS()
           if(!launched){
+            alarm.pause()
+            alarm.currentTime = 0
+            alarm.play()
+            jet.pause()
+            jet.currentTime = 0
+            jet.play()
             launched = true
             document.querySelector('#launchButton').style.background='#800'
             document.querySelector('#launchButton').style.color='#f88'
@@ -1167,6 +1255,28 @@
             LevelReset(true)
           }
         }
+      }
+      
+      const AllSoundsOff = () => {
+        increase.pause()
+        alarm.pause()
+        jet.pause()
+        splode.pause()
+        splode2.pause()
+        decrease.pause()
+        destroy.pause()
+        misclick.pause()
+        strum.pause()
+
+        increase.currentTime = 0
+        alarm.currentTime = 0
+        jet.currentTime = 0
+        splode.currentTime = 0
+        splode2.currentTime = 0
+        decrease.currentTime = 0
+        destroy.currentTime = 0
+        misclick.currentTime = 0
+        strum.currentTime = 0
       }
       
       window.ShowHotkeys = () => {
@@ -1187,6 +1297,7 @@
         document.querySelectorAll('.footerButton').forEach(el => {
           el.style.display = 'inline-block'
         })
+        AllSoundsOff()
         LoadLevel(level, fullReset)
       }
       
@@ -1195,6 +1306,30 @@
         renderer.showCrosshair  = false
         renderer.useFPSControls = false
         renderer.useKeys = false
+      }
+      
+      const RestoreCam = () => {
+        switch(level){
+          case 1:
+            showHUD = false
+            cursorDist = 100
+            UnloadFPS()
+            //LoadFPS()
+            renderer.yaw = 0
+            renderer.roll = 0
+            renderer.pitch = -Math.PI/2
+            renderer.x = 0
+            renderer.y = 0
+            renderer.z = 200
+            var ap = renderer.ActualPosition()
+            cameras[0].x = ap.x
+            cameras[0].y = ap.y
+            cameras[0].z = ap.z
+            cameras[0].roll = ap.z
+            cameras[0].pitch = ap.pitch
+            cameras[0].yaw = ap.yaw
+          break
+        }
       }
       
       var hasMouse = true
@@ -1285,14 +1420,27 @@
               shipView = !shipView
               if(shipView && renderer.cameraMode != 'fps'){
                 LoadFPS()
-                //renderer.useKeys = false
+                renderer.x = ship.x
+                renderer.y = ship.y
+                renderer.z = ship.z
+                renderer.roll = -ship.vecRoll
+                renderer.pitch =- ship.vecPitch
+                renderer.yaw = -ship.vecYaw
+                console.log(ship)
               }
+            }
+            if(e.keyCode == 67){
+              RestoreCam()
             }
             if(e.keyCode == 90 && keys[17]) Undo()
             if(e.keyCode == 72) showHUD = !showHUD
             if(e.keyCode == 32) {
-              if(alive && !launched){
-                Launch()
+              if(alive){
+                if(!launched){
+                  Launch()
+                }else{
+                  LevelReset()
+                }
               }
             }
             if(e.keyCode == 77){
@@ -1361,7 +1509,6 @@
       
         var initShipX, initShipY, initShipZ
         var initShipVx, initShipVy, initShipVz
-        UnloadFPS()
         smoke = []
         particles = []
         unDid = false
@@ -1379,7 +1526,7 @@
         shipShape.yaw = Math.PI
         screenAlpha = 0
         
-        shipSteps = 4
+        shipSteps = 3
         
         //SpawnBlackHole(0,20,0,5)
         //bhIdx++
@@ -1394,32 +1541,18 @@
         
         switch(level) {
           case 1:
-            //LoadFPS()
             levelName = 'FLIGHT TRAINING'
-            cursorDist = 100
 
             SpawnTarget(100, 0, 0)
-            initShipX = -250
+            initShipX = -200
             initShipY = 0
             initShipZ = 0
             
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
-            
-            renderer.yaw = 0
-            renderer.roll = 0
-            renderer.pitch = -Math.PI/2
-            renderer.x = 0
-            renderer.y = 0
-            renderer.z = 200
-            var ap = renderer.ActualPosition()
-            cameras[0].x = ap.x
-            cameras[0].y = ap.y
-            cameras[0].z = ap.z
-            cameras[0].roll = ap.z
-            cameras[0].pitch = ap.pitch
-            cameras[0].yaw = ap.yaw
+            if(initBlackHoles || renderer.cameraMode == 'default')
+              RestoreCam()
           break
         }
         
@@ -1654,6 +1787,22 @@
         DoKeys()
         ProcessScratchCanvas()
         
+        if(renderer.cameraMode == 'fps'){
+          if(window.hovering ||
+             blackholes.filter(v=>v.hover).length){
+            renderer.useKeys = false
+          }else{
+            renderer.useKeys = true
+          }
+        }else{
+          if(launched && alive){
+            renderer.x += (-ship.x - renderer.x) / 5
+            renderer.y += (-ship.z - renderer.y) / 5
+            renderer.z += (20+Math.hypot(ship.vx,ship.vy,ship.vz)*30 -
+                           renderer.z) / 20
+          }
+        }
+        
         levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%12)
         massEl.innerHTML =('▐').repeat(massAvailable/4)
         massNumericEl.innerHTML = Math.round(massAvailable)
@@ -1786,6 +1935,9 @@
             case 'blackhole':
               if(addingMass && !launched && alive){
                 if(massAvailable > 0) {
+                  increase.pause()
+                  increase.currentTime = 0
+                  increase.play()
                   massAvailable -= 1
                   blackholes[bhIdx].mass += 1
                 }
@@ -1901,18 +2053,35 @@
                         switch(bh.buttonPress){
                           case 1:
                             if(bh.mass > 10){
+                              decrease.pause()
+                              decrease.currentTime = 0
+                              decrease.play()
                               bh.mass--
                               massAvailable ++
+                            }else{
+                              misclick.pause()
+                              misclick.currentTime = 0
+                              misclick.play()
                             }
                             
                           break
                           case 2:
                             if(massAvailable > 0){
+                              increase.pause()
+                              increase.currentTime = 0
+                              increase.play()
                               bh.mass++
                               massAvailable --
+                            }else{
+                              misclick.pause()
+                              misclick.currentTime = 0
+                              misclick.play()
                             }
                           break
                           case 3:
+                            destroy.pause()
+                            destroy.currentTime = 0
+                            destroy.play()
                             var bh = blackholes.filter(v=>v.buttonPress==3)[0]
                             massAvailable += bh.mass
                             bh.x = 1e5
@@ -1941,7 +2110,7 @@
                 }
                 subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
                 subShape.yaw   = (-renderer.yaw) - shape.yaw
-                subShape.roll += .005 * (sIdx %2 ? -1 : 1)
+                subShape.roll += .0025 * (sIdx %2 ? -1 : 1) * shipSteps
               })
               shape.rotationMode = 2
               
@@ -2000,9 +2169,9 @@
                           var y2 = y1 + vy
                           var z2 = z1 + vz
 
-                          x2 = x1 + vx
-                          y2 = y1 + vy
-                          z2 = z1 + vz
+                          x2 = x1 + vx/2
+                          y2 = y1 + vy/2
+                          z2 = z1 + vz/2
                           shape.vertices[idx+0] = -x1
                           shape.vertices[idx+1] = y1
                           shape.vertices[idx+2] = z1
@@ -2010,9 +2179,9 @@
                           shape.vertices[idx+4] = y2
                           shape.vertices[idx+5] = z2
                           
-                          x1 = x2
-                          y1 = y2
-                          z1 = z2
+                          x1 = x2 + vx/2
+                          y1 = y2 + vy/2
+                          z1 = z2 + vz/2
                           
                           /*
                           d = Math.hypot(vx, vy, vz)
@@ -2147,7 +2316,7 @@
                         for(var n=0; n<4; n++){
                           var x1 = S(p=Math.PI*2/2*n+shape.roll+Math.PI/2) * 8
                           var y1 = C(p) * 8
-                          var z1 = -8
+                          var z1 = -6
                           p = Math.atan2(y1,z1) + p2
                           d = Math.hypot(y1,z1)
                           y1 = S(p) * d
@@ -2162,7 +2331,6 @@
                              z1 + ship.z - ship.vz/4*n - z )
                         }
                       }
-                        
                       if(shipView){
                         var shipCamDist = 100
                         var shipCamTracking = 12
@@ -2191,7 +2359,7 @@
                     }
                   }
                 }
-                shape.roll += .02 * (launched ? 10 : 1)
+                shape.roll += .02 * (launched ? 16 : 2)
                 renderer.Draw(shape)
               }
             break
@@ -2258,13 +2426,16 @@
                     (v.hover && -y < 80*n && -y > -90*n &&
                     x > -140 && x < 140)){
                   hoverTrigger = v.hover = true
-                  
+                  if(renderer.cameraMode == 'fps') renderer.useKeys = false
                   if(!buttonHover)
                     document.querySelectorAll('canvas').forEach(el => {
                       el.style.cursor = 'move'
                     })
                 }else{
-                  if(!v.dragging) v.hover = false
+                  if(!v.dragging) {
+                    v.hover = false
+                    if(renderer.cameraMode == 'fps') renderer.useKeys = true
+                  }
                 }
               }
             }
