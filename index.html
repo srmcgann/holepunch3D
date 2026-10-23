@@ -648,7 +648,7 @@
       var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .1}},
+        {lighting: {type: 'ambientLight', value: .15}},
         { uniform: {
           type: 'phong',
           value: 0,
@@ -902,7 +902,7 @@
       
       var pointArray = []
       var rad = 100
-      var iPc = 100
+      var iPc = 20
       Array(iPc).fill().map((v, i) => {
         var ls = Rn() ** .5 * rad
         if(0){
@@ -1815,7 +1815,36 @@
       }
       Init()
       
+      var blackholesCopy
       const InitBlackHoles = () => {
+        if(typeof blackholes != 'undefined' &&
+           blackholes.filter(v=>v.x!=1e5).length){
+          blackholesCopy = structuredClone(blackholes)
+          PushHistory({
+            type: 'init holes',
+            val: bhIdx,
+            redoCommand: `
+              massAvailable = 100
+              holesModified = true
+              blackholes = Array(iPc).fill().map((v, i) => {
+                x = 1e5
+                y = 1e5
+                z = 1e5
+                return { x, y, z, mass: 10, idx: i,
+                         ox: 0, oy: 0, oz: 0,
+                         tmx: 0, tmy: 0, tmz: 0,
+                         buttonPress: -1,
+                         hover: false,
+                         dragging: false,
+                         buttonHover: false}
+              })
+            `,
+            undoCommand: `
+              massAvailable = ${massAvailable}
+              blackholes = structuredClone(blackholesCopy)
+            `,
+          })
+        }
         massAvailable = 100
         holesModified = true
         blackholes = Array(iPc).fill().map((v, i) => {
