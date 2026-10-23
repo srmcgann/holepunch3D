@@ -3,6 +3,13 @@
   
   to do:
     sound effects
+    mute button
+    quick "axis-view" switching (make it the only option?)
+      OR multi-view display
+    target contact detection and level advancement
+    smart camera mode - tracks ship from non-ship position
+    ship-tracking camera mode for attempts
+    levels
     ✔ add / remove / delete blackholes
     ✔ set / change blackhole mass
     ✔ undo button
@@ -21,12 +28,6 @@
          ✔ ⤷ mass meter
          ✔ ⤷ level info
          ✔ ⤷ help / hotkeys button
-    quick "axis-view" switching (make it the only option?)
-      OR multi-view display
-    target contact detection and level advancement
-    smart camera mode - tracks ship from non-ship position
-    ship-tracking camera mode for attempts
-    levels
 -->
 <!DOCTYPE html>
 <html>
@@ -150,16 +151,37 @@
         border-right: 3px solid #600;
         border-bottom: 3px solid #600;
       }
+      .muteButton_muted, .muteButton_unmuted{
+        border-top: 3px solid #dbd79e;
+        border-left: 3px solid #dbd79e;
+        border-right:3px solid #403e2c;
+        border-bottom: 3px solid #403e2c;
+        width: 40px;
+        height: 32px;
+        background-color: #6e6c4d;
+        background-size: 25px 25px;
+        background-position: center center;
+        background-repeat: no-repeat;
+      }
+      .muteButton_muted{
+        background-image: url(https://srmcgann.github.io/holepunch3D/mute.png);
+      }
+      .muteButton_unmuted{
+        background-image: url(https://srmcgann.github.io/holepunch3D/audio.png);
+      }
       #helpButton{
-        min-width: unset;
-        margin-left: 30px;
         background: #597;
-        color: #0f8;
-        font-weight:900;
-        border-top: 3px #6f8 solid;
+        border-top: 3px solid #6f8;
         border-left: 3px solid #6f8;
         border-right:3px solid #264;
         border-bottom: 3px solid #264;
+      }
+      #helpButton, #muteButton{
+        min-width: unset;
+        margin-left: 5px;
+        margin-right: 5px;
+        color: #0f8;
+        font-weight:900;
       }
       .massMeterContainer{
         width: 318px;
@@ -226,7 +248,7 @@
         line-height: .85em;
         padding-bottom: 3px;
         cursor: pointer;
-        background: #864;
+        background-color: #864;
         color: #fff;
         border-top: 2px solid #db8;
         border-left: 2px solid #db8;
@@ -255,7 +277,7 @@
       </div>
       <button
         class="headerButton"
-        style="float: right; margin-top: 3px; margin-right: 10px;"
+        style="float: right; margin-top: 3px;"
         id="helpButton"
         onclick="window.ShowHotkeys()"
         onmouseover="window.hovering = true"
@@ -339,6 +361,15 @@
             class="infoContent"
           ></div>
         </div>
+        <button
+          class="headerButton muteButton_unmuted"
+          style="margin-left: 15px;margin-top: 2px;"
+          id="muteButton"
+          onclick="window.ToggleMute()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="mute / unmute"
+        ></button>
       </div>
     </div>
     <script type="module">
@@ -450,6 +481,19 @@
         strum.src = URL.createObjectURL(data)
       })
 
+      /*var mutedIcon = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/mute.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        mutedIcon.src = URL.createObjectURL(data)
+      })
+      
+      var audioIcon = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/audio.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        audioIcon.src = URL.createObjectURL(data)
+      })
+      */
+      
       var HUD = new Image()
       var url = 'https://srmcgann.github.io/holepunch3D/HUD_teal.png'
       await fetch(url).then(res=>res.blob()).then(data => {
@@ -961,10 +1005,10 @@
       const SpawnSplosion = (x, y, z) => {
         splode2.pause()
         splode2.currentTime = 0
-        splode2.play()
+        if(!muted) splode2.play()
         splode.pause()
         splode.currentTime = 0
-        splode.play()
+        if(!muted) splode.play()
         for(var i = 0; i < 250; i++){
           var v = iParticlev * Rn() ** .33
           var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * v
@@ -1246,12 +1290,12 @@
             holesModified = true
             //strum.pause()
             //strum.currentTime = 0
-            //strum.play()
+            //if(!muted) strum.play()
             
           }else{
             misclick.pause()
             misclick.currentTime = 0
-            misclick.play()
+            if(!muted) misclick.play()
             misplaced.timer = renderer.frameCount/60 + 1
             misplaced.x = cursor.x
             misplaced.y = cursor.y
@@ -1267,10 +1311,10 @@
           if(!launched){
             missile.pause()
             missile.currentTime = 0
-            missile.play()
+            if(!muted) missile.play()
             engines.pause()
             engines.currentTime = 0
-            engines.play()
+            if(!muted) engines.play()
             launched = true
             ranOnce = true
             flightpath = []
@@ -1296,6 +1340,7 @@
         destroy.pause()
         misclick.pause()
         strum.pause()
+        missile.pause()
 
         increase.currentTime = 0
         alarm.currentTime = 0
@@ -1306,6 +1351,20 @@
         destroy.currentTime = 0
         misclick.currentTime = 0
         strum.currentTime = 0
+        missile.currentTime = 0
+      }
+      
+      window.ToggleMute = () => {
+        var el = document.querySelector('#muteButton')
+        muted = !muted
+        if(muted){
+          el.classList.replace('muteButton_unmuted', 'muteButton_muted')
+          AllSoundsOff()
+        }else{
+          el.classList.replace('muteButton_muted', 'muteButton_unmuted')
+        }
+        console.log(el)
+        //el.style.backgroundImage = muted ? audioIcon : mutedIcon
       }
       
       window.ShowHotkeys = () => {
@@ -1366,11 +1425,15 @@
       var bhIdx, keys, keyTimers
       var ship, shipView, addingMass
       var launched, massAvailable, alive
-      var level, showHUD, unDid, modalVisible
+      var level, showHUD, modalVisible
       var cameras, predictiveLength, shipSteps
+      var muted, history, historyPointer
       
       const Init = () => {
         level = 1
+        history = Array(1e3).fill('')
+        historyPointer = 0
+        muted = false
         predictiveLength = 200
         modalVisible = false
         showHUD = true
@@ -1389,14 +1452,89 @@
         
         window.onmouseup = e => {
           if(addingMass){
+            PushHistory({
+              type: 'create hole',
+              val: bhIdx,
+              redoCommand: `
+                bhIdx = ${bhIdx};
+                blackholes[${bhIdx}].x = ${blackholes[bhIdx].x};
+                blackholes[${bhIdx}].y = ${blackholes[bhIdx].y};
+                blackholes[${bhIdx}].z = ${blackholes[bhIdx].z};
+                blackholes[${bhIdx}].ox = ${blackholes[bhIdx].ox};
+                blackholes[${bhIdx}].oy = ${blackholes[bhIdx].oy};
+                blackholes[${bhIdx}].oz = ${blackholes[bhIdx].oz};
+                //blackholes[${bhIdx}].tmx = ${blackholes[bhIdx].tmx};
+                //blackholes[${bhIdx}].tmy = ${blackholes[bhIdx].tmy};
+                //blackholes[${bhIdx}].tmz = ${blackholes[bhIdx].tmz};
+                blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                blackholes[${bhIdx}].hover = false;
+                blackholes[${bhIdx}].dragging = false;
+                blackholes[${bhIdx}].buttonHover = false;
+                blackholes[${bhIdx}].buttonPress = false;
+                massAvailable -= ${blackholes[bhIdx].mass};
+                bhIdx = ${bhIdx+1}
+              `,
+              undoCommand: `
+                //DestroyBlackhole(blackholes.filter((v,i)=>i==${bhIdx})[0]);
+                bhIdx = ${bhIdx};
+                blackholes[${bhIdx}].x = 1e5;
+                blackholes[${bhIdx}].y = 1e5;
+                blackholes[${bhIdx}].z = 1e5;
+                blackholes[${bhIdx}].ox = 1e5;
+                blackholes[${bhIdx}].oy = 1e5;
+                blackholes[${bhIdx}].oz = 1e5;
+                //blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                blackholes[${bhIdx}].hover = false;
+                blackholes[${bhIdx}].dragging = false;
+                blackholes[${bhIdx}].buttonHover = false;
+                blackholes[${bhIdx}].buttonPress = false;
+                massAvailable += ${blackholes[bhIdx].mass};
+                bhIdx = ${bhIdx-1}
+              `,
+            })
             bhIdx++
             bhIdx%=iPc
           }
           addingMass = false
-          blackholes.map(v=>{
-            v.dragging = false
-            v.buttonPress = -1
-          })
+          if((l = blackholes.filter(v=>v.dragging)).length) {
+            var mIdx
+            blackholes.forEach((v,i)=>{
+              if(v.dragging) mIdx = i
+            })
+            PushHistory({
+              type: 'move hole',
+              val: mIdx,
+              redoCommand: `
+                var mIdx = ${mIdx};
+                blackholes[mIdx].x = ${blackholes[mIdx].x};
+                blackholes[mIdx].y = ${blackholes[mIdx].y};
+                blackholes[mIdx].z = ${blackholes[mIdx].z};
+                blackholes[mIdx].ox = ${blackholes[mIdx].ox};
+                blackholes[mIdx].oy = ${blackholes[mIdx].oy};
+                blackholes[mIdx].oz = ${blackholes[mIdx].oz};
+                blackholes[mIdx].tmx = ${blackholes[mIdx].tmx};
+                blackholes[mIdx].tmy = ${blackholes[mIdx].tmy};
+                blackholes[mIdx].tmz = ${blackholes[mIdx].tmz};
+                //blackholes[mIdx].mass = ${blackholes[mIdx].mass};
+                blackholes[mIdx].hover = false;
+                blackholes[mIdx].dragging = false;
+                blackholes[mIdx].buttonHover = false;
+                blackholes[mIdx].buttonPress = false;
+              `,
+              undoCommand: `
+                var mIdx = ${mIdx};
+                blackholes[mIdx].x = ${blackholes[mIdx].ox};
+                blackholes[mIdx].y = ${blackholes[mIdx].oy};
+                blackholes[mIdx].z = ${blackholes[mIdx].oz};
+              `,
+            })
+          
+          
+            blackholes.map(v=>{
+              v.dragging = false
+              v.buttonPress = -1
+            })
+          }
         }
         
         window.onmousemove = e => {
@@ -1429,6 +1567,9 @@
                     l[0].tmx = cursor.x
                     l[0].tmy = cursor.y
                     l[0].tmz = cursor.z
+                    l[0].ox = l[0].x
+                    l[0].oy = l[0].y
+                    l[0].oz = l[0].z
                   }
                 }else{
                   SpawnBlackHole()
@@ -1461,7 +1602,14 @@
             if(e.keyCode == 67){
               RestoreCam()
             }
-            if(e.keyCode == 90 && keys[17]) Undo()
+            if(e.keyCode == 90 && keys[17]) {
+              if(keys[16]){
+                Redo()
+                console.log('redoing')
+              }else{
+                Undo()
+              }
+            }
             if(e.keyCode == 72) showHUD = !showHUD
             if(e.keyCode == 32) {
               if(alive){
@@ -1548,11 +1696,13 @@
       
       const InitBlackHoles = () => {
         massAvailable = 100
-        blackholes = Array(iPc).fill().map(v => {
+        holesModified = true
+        blackholes = Array(iPc).fill().map((v, i) => {
           x = 1e5
           y = 1e5
           z = 1e5
-          return { x, y, z, mass: 10,
+          return { x, y, z, mass: 10, idx: i,
+                   ox: 0, oy: 0, oz: 0,
                    tmx: 0, tmy: 0, tmz: 0,
                    buttonPress: -1,
                    hover: false,
@@ -1580,8 +1730,8 @@
         var initShipVx, initShipVy, initShipVz
         smoke = []
         particles = []
-        unDid = false
         window.hovering = false
+        holesModified = false
         if(initBlackHoles){
           bhIdx = 0
           InitBlackHoles()
@@ -1595,7 +1745,6 @@
         shipShape.pitch = 0
         shipShape.yaw = Math.PI
         screenAlpha = 0
-        holesModified = false
         
         shipSteps = 3
         
@@ -1834,20 +1983,81 @@
         if(!launched) InitBlackHoles()
       }
       
+      const PushHistory = event => {
+        history[historyPointer++] = event
+        if(historyPointer > history.length-1) history.shift()
+        console.log(historyPointer)
+      }
+      
+      window.Redo = () => {
+        if(!launched && historyPointer < history.length) {
+          var command = history[historyPointer].redoCommand
+          console.log(historyPointer, command)
+          eval(command)
+          historyPointer++
+        }
+      }
+      
       window.Undo = () => {
-        if(!launched && bhIdx > 0) {
-          blackholes[bhIdx-1].x = 1e5
-          blackholes[bhIdx-1].y = 1e5
-          blackholes[bhIdx-1].z = 1e5
-          massAvailable += blackholes[bhIdx-1].mass
-          blackholes[bhIdx-1].mass = 10
-          unDid = true
+        if(!launched && historyPointer > 0) {
+          eval(history[historyPointer--].undoCommand)
         }
       }
       
       Coordinates.Overlay.fit = 'cover'
       Coordinates.Overlay.Resize()
       
+      const DestroyBlackhole = bh => {
+
+        PushHistory({
+          type: 'destroy hole',
+          val: bhIdx,
+          redoCommand: `
+            var tIdx = ${bh.idx};
+            blackholes[tIdx].x = 1e5;
+            blackholes[tIdx].y = 1e5;
+            blackholes[tIdx].z = 1e5;
+            blackholes[tIdx].ox = 1e5;
+            blackholes[tIdx].oy = 1e5;
+            blackholes[tIdx].oz = 1e5;
+            blackholes[tIdx].mass = 10;
+            blackholes[tIdx].hover = false;
+            blackholes[tIdx].dragging = false;
+            blackholes[tIdx].buttonHover = false;
+            blackholes[tIdx].buttonPress = false;
+            massAvailable += ${bh.mass};
+          `,
+          undoCommand: `
+            bhIdx = ${bhIdx};
+            blackholes[${bhIdx}].x = ${bh.x};
+            blackholes[${bhIdx}].y = ${bh.y};
+            blackholes[${bhIdx}].z = ${bh.z};
+            blackholes[${bhIdx}].ox = ${bh.ox};
+            blackholes[${bhIdx}].oy = ${bh.oy};
+            blackholes[${bhIdx}].oz = ${bh.oz};
+            blackholes[${bhIdx}].mass = ${bh.mass};
+            blackholes[${bhIdx}].hover = false;
+            blackholes[${bhIdx}].dragging = false;
+            blackholes[${bhIdx}].buttonHover = false;
+            blackholes[${bhIdx}].buttonPress = false;
+            massAvailable -= ${bh.mass};
+            //DestroyBlackhole(blackholes.filter((v,i)=>i==${bhIdx})[0]);
+            `,
+        })
+
+
+        massAvailable += bh.mass
+        bh.x = 1e5
+        bh.y = 1e5
+        bh.z = 1e5
+        bh.tmx = 0
+        bh.tmy = 0
+        bh.tmz = 0
+        bh.buttonPress = -1
+        bh.hover = false
+        bh.dragging = false
+        bh.buttonHover = false
+      }
       
       var homing = 100
       var drag = 4
@@ -2034,7 +2244,7 @@
                 if(massAvailable > 0) {
                   increase.pause()
                   increase.currentTime = 0
-                  increase.play()
+                  if(!muted) increase.play()
                   massAvailable -= 1
                   blackholes[bhIdx].mass += 1
                 }
@@ -2153,13 +2363,13 @@
                             if(bh.mass > 10){
                               decrease.pause()
                               decrease.currentTime = 0
-                              decrease.play()
+                              if(!muted) decrease.play()
                               bh.mass--
                               massAvailable ++
                             }else{
                               misclick.pause()
                               misclick.currentTime = 0
-                              misclick.play()
+                              if(!muted) misclick.play()
                             }
                             
                           break
@@ -2167,32 +2377,21 @@
                             if(massAvailable > 0){
                               increase.pause()
                               increase.currentTime = 0
-                              increase.play()
+                              if(!muted) increase.play()
                               bh.mass++
                               massAvailable --
                             }else{
                               misclick.pause()
                               misclick.currentTime = 0
-                              misclick.play()
+                              if(!muted) misclick.play()
                             }
                           break
                           case 3:
                             destroy.pause()
                             destroy.currentTime = 0
-                            destroy.play()
+                            if(!muted) destroy.play()
                             var bh = blackholes.filter(v=>v.buttonPress==3)[0]
-                            massAvailable += bh.mass
-                            bh.x = 1e5
-                            bh.y = 1e5
-                            bh.z = 1e5
-                            bh.tmx = 0
-                            bh.tmy = 0
-                            bh.tmz = 0
-                            bh.buttonPress = -1
-                            bh.hover = false
-                            bh.dragging = false
-                            bh.buttonHover = false
-                            
+                            DestroyBlackhole(bh)
                           break
                         }
                       }
@@ -2631,10 +2830,6 @@
           }
           misplacedShape.alpha = diff/2
           renderer.Draw(misplacedShape)
-        }
-        if(unDid) {
-          bhIdx--
-          unDid = false
         }
         
         //renderer.Draw(tempCube)
