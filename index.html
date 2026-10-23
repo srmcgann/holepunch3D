@@ -1363,7 +1363,6 @@
         }else{
           el.classList.replace('muteButton_muted', 'muteButton_unmuted')
         }
-        console.log(el)
         //el.style.backgroundImage = muted ? audioIcon : mutedIcon
       }
       
@@ -1427,12 +1426,13 @@
       var launched, massAvailable, alive
       var level, showHUD, modalVisible
       var cameras, predictiveLength, shipSteps
-      var muted, history, historyPointer
+      var muted, history, historyPointer, historyTop
       
       const Init = () => {
         level = 1
         history = Array(1e3).fill('')
         historyPointer = 0
+        historyTop = 0
         muted = false
         predictiveLength = 200
         modalVisible = false
@@ -1475,7 +1475,6 @@
                 bhIdx = ${bhIdx+1}
               `,
               undoCommand: `
-                //DestroyBlackhole(blackholes.filter((v,i)=>i==${bhIdx})[0]);
                 bhIdx = ${bhIdx};
                 blackholes[${bhIdx}].x = 1e5;
                 blackholes[${bhIdx}].y = 1e5;
@@ -1489,7 +1488,7 @@
                 blackholes[${bhIdx}].buttonHover = false;
                 blackholes[${bhIdx}].buttonPress = false;
                 massAvailable += ${blackholes[bhIdx].mass};
-                bhIdx = ${bhIdx-1}
+                //bhIdx = ${bhIdx-1}
               `,
             })
             bhIdx++
@@ -1528,13 +1527,29 @@
                 blackholes[mIdx].z = ${blackholes[mIdx].oz};
               `,
             })
-          
-          
-            blackholes.map(v=>{
-              v.dragging = false
-              v.buttonPress = -1
-            })
           }
+          
+          blackholes.filter(v=>v.buttonPress!=-1).map(bh => {
+            if(bh.buttonPress == 1 || bh.buttonPress == 2){
+              PushHistory({
+                type: 'change mass',
+                val: bh.idx,
+                redoCommand: `
+                  massAvailable += blackholes[${bh.idx}].mass - ${bh.mass}
+                  blackholes[${bh.idx}].mass = ${bh.mass};
+                `,
+                undoCommand: `
+                  massAvailable += blackholes[${bh.idx}].mass - ${bh.om}
+                  blackholes[${bh.idx}].mass = ${bh.om};
+                `,
+              })
+              console.log(history[historyTop-1])
+            }
+          })
+          blackholes.map(v=>{
+            v.dragging = false
+            v.buttonPress = -1
+          })
         }
         
         window.onmousemove = e => {
@@ -1562,6 +1577,7 @@
                 if((l = blackholes.filter(v=>v.hover)).length) {
                   if(l[0].buttonHover){
                     l[0].buttonPress = l[0].buttonHover
+                    l[0].om = l[0].mass
                   }else{
                     l[0].dragging = true
                     l[0].tmx = cursor.x
@@ -1605,7 +1621,6 @@
             if(e.keyCode == 90 && keys[17]) {
               if(keys[16]){
                 Redo()
-                console.log('redoing')
               }else{
                 Undo()
               }
@@ -1986,21 +2001,20 @@
       const PushHistory = event => {
         history[historyPointer++] = event
         if(historyPointer > history.length-1) history.shift()
-        console.log(historyPointer)
+        historyTop = historyPointer
       }
       
       window.Redo = () => {
+        if(historyPointer >= historyTop) return
         if(!launched && historyPointer < history.length) {
-          var command = history[historyPointer].redoCommand
-          console.log(historyPointer, command)
+          var command = history[historyPointer++].redoCommand
           eval(command)
-          historyPointer++
         }
       }
       
       window.Undo = () => {
         if(!launched && historyPointer > 0) {
-          eval(history[historyPointer--].undoCommand)
+          eval(history[--historyPointer].undoCommand)
         }
       }
       
@@ -2028,19 +2042,20 @@
             massAvailable += ${bh.mass};
           `,
           undoCommand: `
-            bhIdx = ${bhIdx};
-            blackholes[${bhIdx}].x = ${bh.x};
-            blackholes[${bhIdx}].y = ${bh.y};
-            blackholes[${bhIdx}].z = ${bh.z};
-            blackholes[${bhIdx}].ox = ${bh.ox};
-            blackholes[${bhIdx}].oy = ${bh.oy};
-            blackholes[${bhIdx}].oz = ${bh.oz};
-            blackholes[${bhIdx}].mass = ${bh.mass};
-            blackholes[${bhIdx}].hover = false;
-            blackholes[${bhIdx}].dragging = false;
-            blackholes[${bhIdx}].buttonHover = false;
-            blackholes[${bhIdx}].buttonPress = false;
+            var tIdx = ${bh.idx};
+            blackholes[tIdx].x = ${bh.x};
+            blackholes[tIdx].y = ${bh.y};
+            blackholes[tIdx].z = ${bh.z};
+            blackholes[tIdx].ox = ${bh.ox};
+            blackholes[tIdx].oy = ${bh.oy};
+            blackholes[tIdx].oz = ${bh.oz};
+            blackholes[tIdx].mass = ${bh.mass};
+            blackholes[tIdx].hover = false;
+            blackholes[tIdx].dragging = false;
+            blackholes[tIdx].buttonHover = false;
+            blackholes[tIdx].buttonPress = false;
             massAvailable -= ${bh.mass};
+            
             //DestroyBlackhole(blackholes.filter((v,i)=>i==${bhIdx})[0]);
             `,
         })
