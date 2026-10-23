@@ -414,9 +414,9 @@
       
       //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/brutalism1.jpg'
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
-      var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/test.png'
+      var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/nebugrid.jpg'
       
-      var showBackground = false
+      var showBackground = true
       var playbackSpeed = 2
       
       var increase = new Audio()
@@ -648,10 +648,10 @@
       var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: 1}},
+        {lighting: {type: 'ambientLight', value: .1}},
         { uniform: {
           type: 'phong',
-          value: .25,
+          value: 0,
           theta: .5,
         } }
       ]
@@ -792,16 +792,16 @@
       }
       
       var geoOptions = {
-        shapeType: 'sphere',
+        shapeType: 'obj',
         //subs: 2,
         //sphereize: .5,
         //averageNormals: true,
         size: 1.5,
-        //url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
-        //map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
-        map: 'https://srmcgann.github.io/Coordinates/resources/rd1_po2.png',
-        scaleUVX: 4,
-        scaleUVY: 4,
+        url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
+        //map: 'https://srmcgann.github.io/Coordinates/resources/rd1_po2.png',
+        //scaleUVX: 4,
+        //scaleUVY: 4,
         name: 'cube grid',
         disableDepthTest: true,
         alpha: .9,
@@ -809,7 +809,7 @@
         scaleY: boundingBoxSize,
         scaleZ: boundingBoxSize,
         color: 0x110022,
-        colorMix: .9,
+        colorMix: 0,
       }
       if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
@@ -1271,6 +1271,9 @@
       const AxisView = () => {
         var ret
         const ori = (theta, comp) => {
+          while(Math.abs(comp-theta)>Math.PI){
+            theta += comp > theta ? Math.PI * 2 : -Math.PI*2
+          }
           return Math.round((Math.atan2(S(theta), 
                               C(theta)))*1e10)/1e10 ==
                  Math.round(comp*1e10)/1e10
@@ -1428,7 +1431,7 @@
             targPitch = renderer.pitch = 0 //-Math.PI/2
             targX = renderer.x = 0
             targY = renderer.y = 0
-            targZ = renderer.z = 200
+            targZ = renderer.z = 250
             var ap = renderer.ActualPosition()
             cameras[0].x = ap.x
             cameras[0].y = ap.y
@@ -1675,7 +1678,7 @@
             case 37:
               switch(av){
                 case 'X':
-                  targYaw = 0
+                  targYaw -= Math.PI / 2
                   targPitch = 0
                 break
                 case 'Y':
@@ -1683,11 +1686,11 @@
                   targPitch = 0
                 break
                 case 'Z':
-                  targYaw = -Math.PI / 2
+                  targYaw -= Math.PI / 2
                   targPitch = 0
                 break
                 case '-X':
-                  targYaw = Math.PI
+                  targYaw -= Math.PI / 2
                   targPitch = 0
                 break
                 case '-Y':
@@ -1695,7 +1698,7 @@
                   targPitch = 0
                 break
                 case '-Z':
-                  targYaw = Math.PI/2
+                  targYaw -= Math.PI / 2
                   targPitch = 0
                 break
               }
@@ -1731,27 +1734,27 @@
             case 39:
               switch(av){
                 case 'X':
-                  targYaw = Math.PI
+                  targYaw += Math.PI / 2
                   targPitch = 0
                 break
                 case 'Y':
-                  targYaw = Math.PI/2
+                  targYaw = -Math.PI / 2
                   targPitch = 0
                 break
                 case 'Z':
-                  targYaw = Math.PI/2
+                  targYaw += Math.PI / 2
                   targPitch = 0
                 break
                 case '-X':
-                  targYaw = 0
+                  targYaw += Math.PI / 2
                   targPitch = 0
                 break
                 case '-Y':
-                  targYaw = -Math.PI/2
+                  targYaw = Math.PI / 2
                   targPitch = 0
                 break
                 case '-Z':
-                  targYaw = -Math.PI/2
+                  targYaw += Math.PI / 2
                   targPitch = 0
                 break
               }
@@ -2237,6 +2240,27 @@
           }
           
         }
+        
+        while(Math.abs(targPitch) > Math.PI){
+          if(targPitch < 0){
+            targPitch += Math.PI * 2
+            renderer.pitch += Math.PI * 2
+          }else{
+            targPitch -= Math.PI * 2
+            renderer.pitch -= Math.PI * 2
+          }
+        }
+        
+        while(Math.abs(targYaw) > Math.PI){
+          if(targYaw < 0){
+            targYaw += Math.PI * 2
+            renderer.yaw += Math.PI * 2
+          }else{
+            targYaw -= Math.PI * 2
+            renderer.yaw -= Math.PI * 2
+          }
+        }
+        
         renderer.x += (targX - renderer.x) / 3
         renderer.y += (targY - renderer.y) / 3
         renderer.z += (targZ - renderer.z) / 3
