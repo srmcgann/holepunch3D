@@ -62,7 +62,9 @@
        border-color: #666;
       }
       #hotkeys{
+        font-family: monospace;
         width: 500px;
+        white-space: pre;
         color: #ff4;
         background: #1484;
         border-radius: 5px;
@@ -275,9 +277,10 @@
         onkeydown="window.keysOnButton(event)"
         autofocus="true"
       >close [ESC]</button>
-      ESC        : close this window<br>
-      O            : toggle ship-camera mode<br>
-      H            : toggle HUD (in ship-camera mode)<br>
+      ESC     : close this window
+      O       : toggle ship-camera mode
+      H       : toggle HUD (in ship-camera mode)
+      C       : reset camera to default
       blah<br>
       blah<br>
     </div>
@@ -360,9 +363,9 @@
       var w = c.width = renderer.c.width
       var h = c.height = renderer.c.height
       
-      var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/stars.jpg'
+      //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/brutalism1.jpg'
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
-      //var refTexture = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/pathway_morning.jpg'
+      var refTexture = 'https://srmcgann.github.io/skyboxes2/HDRI/test.png'
       
       var showBackground = false
       var playbackSpeed = 2
@@ -375,27 +378,35 @@
         increase.src = URL.createObjectURL(data)
       })
 
+      var missile = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/missile.wav'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        missile.loop = false
+        missile.volume = .5
+        missile.src = URL.createObjectURL(data)
+      })
+
       var alarm = new Audio()
       var url = 'https://srmcgann.github.io/holepunch3D/alarm.mp3'
       await fetch(url).then(res=>res.blob()).then(data => {
         alarm.loop = false
-        alarm.volume = .8
+        alarm.volume = .25
         alarm.src = URL.createObjectURL(data)
       })
 
-      var jet = new Audio()
-      var url = 'https://srmcgann.github.io/holepunch3D/jet.mp3'
+      var engines = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/engines.mp3'
       await fetch(url).then(res=>res.blob()).then(data => {
-        jet.loop = false
-        jet.volume = .8
-        jet.src = URL.createObjectURL(data)
+        engines.loop = true
+        engines.volume = .75
+        engines.src = URL.createObjectURL(data)
       })
 
       var splode = new Audio()
       var url = 'https://srmcgann.github.io/holepunch3D/splode.mp3'
       await fetch(url).then(res=>res.blob()).then(data => {
         splode.loop = false
-        splode.volume = .8
+        splode.volume = 1
         splode.src = URL.createObjectURL(data)
       })
 
@@ -403,7 +414,7 @@
       var url = 'https://srmcgann.github.io/holepunch3D/splode2.mp3'
       await fetch(url).then(res=>res.blob()).then(data => {
         splode2.loop = false
-        splode2.volume = .8
+        splode2.volume = .25
         splode2.src = URL.createObjectURL(data)
       })
 
@@ -575,10 +586,11 @@
       var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .2}},
+        {lighting: {type: 'ambientLight', value: 1}},
         { uniform: {
           type: 'phong',
-          value: 0
+          value: .25,
+          theta: .5,
         } }
       ]
       var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -718,16 +730,24 @@
       }
       
       var geoOptions = {
-        shapeType: 'obj',
-        url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
-        map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
+        shapeType: 'sphere',
+        //subs: 2,
+        //sphereize: .5,
+        //averageNormals: true,
+        size: 1.5,
+        //url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
+        //map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
+        map: 'https://srmcgann.github.io/Coordinates/resources/rd1_po2.png',
+        scaleUVX: 4,
+        scaleUVY: 4,
         name: 'cube grid',
         disableDepthTest: true,
         alpha: .9,
         scaleX: boundingBoxSize,
         scaleY: boundingBoxSize,
         scaleZ: boundingBoxSize,
-        colorMix: 0,
+        color: 0x110022,
+        colorMix: .9,
       }
       if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
@@ -903,9 +923,9 @@
         shapeType: 'lines',
         name: 'lines',
         geometryData,
-        alpha: .5,
-        penumbra: .33,
-        size: 15,
+        alpha: .66,
+        penumbra: 0,
+        size: 20,
         color: 0xff8800,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -939,6 +959,12 @@
 
       var iParticlev = 3
       const SpawnSplosion = (x, y, z) => {
+        splode2.pause()
+        splode2.currentTime = 0
+        splode2.play()
+        splode.pause()
+        splode.currentTime = 0
+        splode.play()
         for(var i = 0; i < 250; i++){
           var v = iParticlev * Rn() ** .33
           var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * v
@@ -1134,42 +1160,42 @@
             switch(key){
               case 87: //w
                 if(renderer.cameraMode != 'fps'){
-                  renderer.z -= 1 * accel
-                  renderer.z = Math.max(10, renderer.z)
+                  targZ -= 1 * accel
+                  targZ = Math.max(10, targZ)
                 }
               break
               case 65: //a
                 if(renderer.cameraMode != 'fps'){
-                  renderer.yaw -= .025 * accel
+                  targYaw -= .025 * accel
                 }
               break
               case 83: //s
                 if(renderer.cameraMode != 'fps'){
-                  renderer.z += 1 * accel
-                  renderer.z = Math.min(maxDist, renderer.z)
+                  targZ += 1 * accel
+                  targZ = Math.min(maxDist, targZ)
                 }
               break
               case 68: //d
                 if(renderer.cameraMode != 'fps'){
-                  renderer.yaw += .025 * accel
+                  targYaw += .025 * accel
                 }
               break
               case 37: // left arrow
-                renderer.yaw += .025 * accel
+                //targYaw += .025 * accel
               break
               case 38: // up arrow
-                renderer.pitch -= .025 * accel
+                //targPitch -= .025 * accel
                 if(renderer.cameraMode != 'fps'){
-                  renderer.pitch = Math.min(1, Math.max(-1, renderer.pitch))
+                  targPitch = Math.min(1, Math.max(-1, targPitch))
                 }
               break
               case 39: // right arrow
-                renderer.yaw -= .025 * accel
+                //targYaw -= .025 * accel
               break
               case 40: // down arrow
-                renderer.pitch += .025 * accel
+                //targPitch += .025 * accel
                 if(renderer.cameraMode != 'fps'){
-                  renderer.pitch = Math.min(1, Math.max(-1, renderer.pitch))
+                  targPitch = Math.min(1, Math.max(-1, targPitch))
                 }
               break
             }
@@ -1184,18 +1210,18 @@
                               C(theta)))*1e10)/1e10 ==
                  Math.round(comp*1e10)/1e10
         }
-        if(ori(renderer.yaw, 0) &&
-           ori(renderer.pitch, 0)) ret = 'Z'
-        if(ori(renderer.yaw, Math.PI/2) &&
-           ori(renderer.pitch, 0)) ret = 'X'
-        if(ori(renderer.yaw, Math.PI) &&
-           ori(renderer.pitch, 0)) ret = '-Z'
-        if(ori(renderer.yaw, Math.PI * 1.5) &&
-           ori(renderer.pitch, 0)) ret = '-X'
-        if(ori(renderer.yaw, 0) &&
-           ori(renderer.pitch, Math.PI/2)) ret = '-Y'
-        if(ori(renderer.yaw, 0) &&
-           ori(renderer.pitch, -Math.PI/2)) ret = 'Y'
+        if(ori(targYaw, 0) &&
+           ori(targPitch, 0)) ret = 'Z'
+        if(ori(targYaw, Math.PI/2) &&
+           ori(targPitch, 0)) ret = 'X'
+        if(ori(targYaw, Math.PI) &&
+           ori(targPitch, 0)) ret = '-Z'
+        if(ori(targYaw, -Math.PI/2) &&
+           ori(targPitch, 0)) ret = '-X'
+        if(ori(targYaw, 0) &&
+           ori(targPitch, Math.PI/2)) ret = '-Y'
+        if(ori(targYaw, 0) &&
+           ori(targPitch, -Math.PI/2)) ret = 'Y'
 
         return ret
       }
@@ -1217,9 +1243,10 @@
             blackholes[bhIdx].z = cursor.z
             blackholes[bhIdx].mass = 10
             massAvailable -= 10
-            strum.pause()
-            strum.currentTime = 0
-            strum.play()
+            holesModified = true
+            //strum.pause()
+            //strum.currentTime = 0
+            //strum.play()
             
           }else{
             misclick.pause()
@@ -1238,13 +1265,15 @@
              Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
           //if(!shipView) UnloadFPS()
           if(!launched){
-            alarm.pause()
-            alarm.currentTime = 0
-            alarm.play()
-            jet.pause()
-            jet.currentTime = 0
-            jet.play()
+            missile.pause()
+            missile.currentTime = 0
+            missile.play()
+            engines.pause()
+            engines.currentTime = 0
+            engines.play()
             launched = true
+            ranOnce = true
+            flightpath = []
             document.querySelector('#launchButton').style.background='#800'
             document.querySelector('#launchButton').style.color='#f88'
             document.querySelector('#launchButton').innerHTML = 'ABORT'
@@ -1260,7 +1289,7 @@
       const AllSoundsOff = () => {
         increase.pause()
         alarm.pause()
-        jet.pause()
+        engines.pause()
         splode.pause()
         splode2.pause()
         decrease.pause()
@@ -1270,7 +1299,7 @@
 
         increase.currentTime = 0
         alarm.currentTime = 0
-        jet.currentTime = 0
+        engines.currentTime = 0
         splode.currentTime = 0
         splode2.currentTime = 0
         decrease.currentTime = 0
@@ -1315,12 +1344,12 @@
             cursorDist = 100
             UnloadFPS()
             //LoadFPS()
-            renderer.yaw = 0
-            renderer.roll = 0
-            renderer.pitch = -Math.PI/2
-            renderer.x = 0
-            renderer.y = 0
-            renderer.z = 200
+            targYaw = targYaw = 0
+            targRoll = renderer.roll = 0
+            targPitch = renderer.pitch = 0 //-Math.PI/2
+            targX = targX = 0
+            targY = targY = 0
+            targZ = targZ = 200
             var ap = renderer.ActualPosition()
             cameras[0].x = ap.x
             cameras[0].y = ap.y
@@ -1373,6 +1402,7 @@
         window.onmousemove = e => {
           if(alive && !launched){
             if((l = blackholes.filter(v=>v.dragging)).length) {
+              holesModified = true
               l[0].dragging = true
               l[0].x += cursor.x - l[0].tmx
               l[0].y += cursor.y - l[0].tmy
@@ -1420,13 +1450,12 @@
               shipView = !shipView
               if(shipView && renderer.cameraMode != 'fps'){
                 LoadFPS()
-                renderer.x = ship.x
-                renderer.y = ship.y
-                renderer.z = ship.z
-                renderer.roll = -ship.vecRoll
-                renderer.pitch =- ship.vecPitch
-                renderer.yaw = -ship.vecYaw
-                console.log(ship)
+                targZ = ship.x
+                targY = ship.y
+                targZ = ship.z
+                targRoll = -ship.vecRoll
+                targPitch =- ship.vecPitch
+                targYaw = -ship.vecYaw
               }
             }
             if(e.keyCode == 67){
@@ -1446,8 +1475,8 @@
             if(e.keyCode == 77){
               if(renderer.cameraMode == 'fps'){
                 UnloadFPS()
-                renderer.x = renderer.y = 0
-                renderer.z = 20
+                targX = targY = 0
+                targZ = 20
                 renderer.cameraMode = 'default'
               }else{
                 LoadFPS()
@@ -1456,6 +1485,39 @@
             if(e.keyCode == 13) {
               if(!addingMass && !launched && alive) SpawnBlackHole()
             }
+          }
+          switch(e.keyCode){
+            case 37:
+              console.log(AxisView())
+              switch(AxisView()){
+                case 'X':
+                  targYaw = Math.PI
+                  targPitch = 0
+                break
+                case 'Y':
+                break
+                case 'Z':
+                  targYaw = Math.PI / 2
+                  targPitch = 0
+                break
+                case '-X':
+                  targYaw = 0
+                  targPitch = 0
+                break
+                case '-Y':
+                break
+                case '-Z':
+                  targYaw = -Math.PI/2
+                  targPitch = 0
+                break
+              }
+            break
+            case 38:
+            break
+            case 39:
+            break
+            case 40:
+            break
           }
         }
         
@@ -1504,7 +1566,14 @@
       var massEl = document.querySelector("#massMeter")
       var massNumericEl = document.querySelector("#massNumeric")
       var holeCountEl = document.querySelector("#holeCount")
-      var blackholes, screenAlpha
+      var blackholes, screenAlpha, flightpath, ranOnce
+      var holesModified
+      var targX
+      var targY
+      var targZ
+      var targRoll
+      var targPitch
+      var targYaw
       const LoadLevel = (level, initBlackHoles=true) => {
       
         var initShipX, initShipY, initShipZ
@@ -1516,6 +1585,7 @@
         if(initBlackHoles){
           bhIdx = 0
           InitBlackHoles()
+          ranOnce = false
         }
         var shipShape = shapes.filter(v=>v.name == 'ship')[0]
         shipShape.x = 0
@@ -1525,6 +1595,7 @@
         shipShape.pitch = 0
         shipShape.yaw = Math.PI
         screenAlpha = 0
+        holesModified = false
         
         shipSteps = 3
         
@@ -1720,12 +1791,12 @@
             if(shape.length){
               var rx = 0
               var ry = 0
-              var rz = renderer.z/(1+fac)
-              p = Math.atan2(ry, rz) - renderer.pitch
+              var rz = targZ/(1+fac)
+              p = Math.atan2(ry, rz) - targPitch
               d = Math.hypot(ry, rz)
               ry = S(p) * d
               rz = C(p) * d
-              p = Math.atan2(rx, rz) + renderer.yaw
+              p = Math.atan2(rx, rz) + targYaw
               d = Math.hypot(rx, rz)
               rx = S(p) * d
               rz = C(p) * d
@@ -1734,8 +1805,8 @@
               shape.x = rx
               shape.y = ry
               shape.z = rz
-              shape.pitch = renderer.pitch
-              shape.yaw = -renderer.yaw
+              shape.pitch = targPitch
+              shape.yaw = -targYaw
             }
             */
           }
@@ -1796,12 +1867,38 @@
           }
         }else{
           if(launched && alive){
-            renderer.x += (-ship.x - renderer.x) / 5
-            renderer.y += (-ship.z - renderer.y) / 5
-            renderer.z += (20+Math.hypot(ship.vx,ship.vy,ship.vz)*30 -
-                           renderer.z) / 20
+            switch(AxisView()){
+              case 'X':
+              break
+              case 'Y':
+                targX += (-ship.x - targX) / 5
+                targY += (-ship.z - targY) / 5
+                targZ += -(32+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
+                               targZ) / 20
+              break
+              case 'Z':
+                targX += (-ship.x - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += (32+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
+                               targZ) / 20
+              break
+              case '-X':
+              break
+              case '-Y':
+              break
+              case '-Z':
+              break
+            }
           }
+          
+          renderer.x += (targX - renderer.x) / 3
+          renderer.y += (targY - renderer.y) / 3
+          renderer.z += (targZ - renderer.z) / 3
+          renderer.roll += (targRoll - renderer.roll) / 3
+          renderer.pitch += (targPitch - renderer.pitch) / 3
+          renderer.yaw += (targYaw - renderer.yaw) / 3
         }
+        
         
         levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%12)
         massEl.innerHTML =('▐').repeat(massAvailable/4)
@@ -1872,9 +1969,9 @@
         shapes.forEach(shape => {
           switch(shape.name){
             case 'background':
-              shape.x = -renderer.x
-              shape.y = -renderer.y
-              shape.z = -renderer.z
+              shape.x = -targX
+              shape.y = -targY
+              shape.z = -targZ
               //shape.color = 0xffffff
               //shape.colorMix = 1
               renderer.Draw(shape)
@@ -2050,6 +2147,7 @@
                         })
                       }
                       if(bh.buttonPress != -1){
+                        holesModified = true
                         switch(bh.buttonPress){
                           case 1:
                             if(bh.mass > 10){
@@ -2108,8 +2206,8 @@
                     }
                   }
                 }
-                subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
-                subShape.yaw   = (-renderer.yaw) - shape.yaw
+                subShape.pitch = (-targPitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
+                subShape.yaw   = (-targYaw) - shape.yaw
                 subShape.roll += .0025 * (sIdx %2 ? -1 : 1) * shipSteps
               })
               shape.rotationMode = 2
@@ -2122,8 +2220,8 @@
                 subShape.x = blackholes[sIdx].x - subShape.ox
                 subShape.y = blackholes[sIdx].y - subShape.oy
                 subShape.z = blackholes[sIdx].z - subShape.oz
-                subShape.pitch = (-renderer.pitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
-                subShape.yaw   = (-renderer.yaw) - shape.yaw
+                subShape.pitch = (-targPitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
+                subShape.yaw   = (-targYaw) - shape.yaw
                 subShape.roll += .001 * (sIdx %2 ? -1 : 1)
               })
               shape.rotationMode = 2
@@ -2158,30 +2256,36 @@
                         vz = ar.vz
                         if(ar.collision){
                           collision = true
-                          shape.vertices[idx+0] = 0
-                          shape.vertices[idx+1] = 0
-                          shape.vertices[idx+2] = 0
-                          shape.vertices[idx+3] = 0
-                          shape.vertices[idx+4] = 0
-                          shape.vertices[idx+5] = 0
+                          shape.vertices[idx+0] = 1e5
+                          shape.vertices[idx+1] = 1e5
+                          shape.vertices[idx+2] = 1e5
+                          shape.vertices[idx+3] = 1e5
+                          shape.vertices[idx+4] = 1e5
+                          shape.vertices[idx+5] = 1e5
                         }else{
                           var x2 = x1 + vx
                           var y2 = y1 + vy
                           var z2 = z1 + vz
 
-                          x2 = x1 + vx/2
-                          y2 = y1 + vy/2
-                          z2 = z1 + vz/2
+                          x2 = x1 + vx
+                          y2 = y1 + vy
+                          z2 = z1 + vz
                           shape.vertices[idx+0] = -x1
                           shape.vertices[idx+1] = y1
                           shape.vertices[idx+2] = z1
-                          shape.vertices[idx+3] = -x2
-                          shape.vertices[idx+4] = y2
-                          shape.vertices[idx+5] = z2
+                          if(((j/12|0)%3)){
+                            shape.vertices[idx+3] = -x2
+                            shape.vertices[idx+4] = y2
+                            shape.vertices[idx+5] = z2
+                          }else{
+                            shape.vertices[idx+3] = -x1
+                            shape.vertices[idx+4] = y1
+                            shape.vertices[idx+5] = z1
+                          }
                           
-                          x1 = x2 + vx/2
-                          y1 = y2 + vy/2
-                          z1 = z2 + vz/2
+                          x1 = x2
+                          y1 = y2
+                          z1 = z2
                           
                           /*
                           d = Math.hypot(vx, vy, vz)
@@ -2202,16 +2306,58 @@
                             colors[idx2 + 0] = 1
                             colors[idx2 + 1] = 1
                             colors[idx2 + 2] = 1
-                            colors[idx2 + 3] = .5
+                            colors[idx2 + 3] = .75
                           }
                         }
                       }else{
-                        shape.vertices[idx+0] = 0
-                        shape.vertices[idx+1] = 0
-                        shape.vertices[idx+2] = 0
-                        shape.vertices[idx+3] = 0
-                        shape.vertices[idx+4] = 0
-                        shape.vertices[idx+5] = 0
+                        shape.vertices[idx+0] = 1e5
+                        shape.vertices[idx+1] = 1e5
+                        shape.vertices[idx+2] = 1e5
+                        shape.vertices[idx+3] = 1e5
+                        shape.vertices[idx+4] = 1e5
+                        shape.vertices[idx+5] = 1e5
+                      }
+                    }else{
+                      idx = j
+                      if(!launched && ranOnce && !holesModified){
+                        var idx2 = 1 + idx/6 - predictiveLength
+                        if(idx2 < flightpath.length){
+                          if(i == 0) {
+                            for(var m = 2*3; m--;){
+                              var idx3 = idx/6*8*3 + m*4
+                              colors[idx3 + 0] = 1
+                              colors[idx3 + 1] = 0
+                              colors[idx3 + 2] = 0
+                              colors[idx3 + 3] = .5
+                            }
+                            var x1 = flightpath[idx2].x1
+                            var y1 = flightpath[idx2].y1
+                            var z1 = flightpath[idx2].z1
+                            var x2 = flightpath[idx2].x2
+                            var y2 = flightpath[idx2].y2
+                            var z2 = flightpath[idx2].z2
+                            shape.vertices[idx+0] = -x1
+                            shape.vertices[idx+1] = y1
+                            shape.vertices[idx+2] = z1
+                            shape.vertices[idx+3] = -x2
+                            shape.vertices[idx+4] = y2
+                            shape.vertices[idx+5] = z2
+                          }
+                        }else{
+                          shape.vertices[idx+0] = 1e5
+                          shape.vertices[idx+1] = 1e5
+                          shape.vertices[idx+2] = 1e5
+                          shape.vertices[idx+3] = 1e5
+                          shape.vertices[idx+4] = 1e5
+                          shape.vertices[idx+5] = 1e5
+                        }
+                      }else{
+                        shape.vertices[idx+0] = 1e5
+                        shape.vertices[idx+1] = 1e5
+                        shape.vertices[idx+2] = 1e5
+                        shape.vertices[idx+3] = 1e5
+                        shape.vertices[idx+4] = 1e5
+                        shape.vertices[idx+5] = 1e5
                       }
                     }
                   }
@@ -2281,6 +2427,8 @@
                       if(ar.collision) {
                         SpawnSplosion(ship.x, ship.y, ship.z)
                         alive = false
+                        engines.pause()
+                        engines.currentTime = 0
                       }
                     }
                     if(alive){
@@ -2290,10 +2438,28 @@
                       shape.yaw = p1
                       shape.pitch = p2
                       
-                      if(alive && launched){
+                      if(launched){
                         shape.x = ship.x += ship.vx
                         shape.y = ship.y += ship.vy
                         shape.z = ship.z += ship.vz
+                        if(!i) {
+                          flightpath.push({
+                            x1: ship.x,
+                            y1: ship.y,
+                            z1: ship.z,
+                            x2: ship.x + ship.vx,
+                            y2: ship.y + ship.vy,
+                            z2: ship.z + ship.vz,
+                          })
+                          if(flightpath.length > 1){
+                            flightpath[flightpath.length-2].x2=ship.x
+                            flightpath[flightpath.length-2].y2=ship.y
+                            flightpath[flightpath.length-2].z2=ship.z
+                          }
+                        }
+                        while(flightpath.length>iLc-predictiveLength){
+                          flightpath = flightpath.filter((v,i)=>i)
+                        }
                       }
                       //ship.vx /= drag
                       //ship.vy /= drag
@@ -2302,12 +2468,14 @@
                          ship.y > boundingBoxSize || ship.y < -boundingBoxSize ||
                          ship.z > boundingBoxSize || ship.z < -boundingBoxSize){
                          alive = false
+                         engines.pause()
+                         engines.currentTime = 0
                          SpawnSplosion(ship.x, ship.y, ship.z)
                          renderer.useKeys = false
                          //shipView = false
                       }
                       d = Math.hypot(ship.vx, ship.vy, ship.vz)
-                      if(alive && d > .01 && Rn() < 1){
+                      if(alive && d > .01){
                         x = ship.vx / d * 3
                         y = ship.vy / d * 3
                         z = ship.vz / d * 3
@@ -2350,11 +2518,11 @@
                         ship.vecx += (vecx - ship.vecx) / shipCamTracking
                         ship.vecy += (vecy - ship.vecy) / shipCamTracking
                         ship.vecz += (vecz - ship.vecz) / shipCamTracking
-                        renderer.x = -ship.x - ship.vecx
-                        renderer.y = -ship.y - ship.vecy + 40
-                        renderer.z = -ship.z - ship.vecz
-                        renderer.yaw = -shape.yaw + Math.PI
-                        renderer.pitch = shape.pitch
+                        targX = -ship.x - ship.vecx
+                        targY = -ship.y - ship.vecy + 40
+                        targZ = -ship.z - ship.vecz
+                        targYaw = -shape.yaw + Math.PI
+                        targPitch = shape.pitch
                       }
                     }
                   }
@@ -2440,6 +2608,15 @@
               }
             }
           })
+          if(blackholes.filter(v=>v.hover).length > 1){
+            var first = false
+            blackholes.map(v=>{
+              if(v.hover){
+                if(first) v.hover = false
+                first = true
+              }
+            })
+          }
         }
         
         if(misplaced.timer > t){
