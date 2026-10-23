@@ -234,6 +234,13 @@
         border-bottom: 3px solid #543;
         text-shadow: 2px 2px 2px #120;
       }
+      #undoButton, #redoButton{
+        font-size: 15px;
+        line-height: .6em;
+        padding-top: 4px;
+        padding-bottom: 0;
+        margin-top: 2px;
+      }
       .headerButton:focus, .footerButton:focus{
         outline: none;
       }
@@ -345,12 +352,23 @@
         </button>
         <button
           class="footerButton"
+          id="undoButton"
           onclick="window.Undo()"
           onmouseover="window.hovering = true"
           onmouseout="window.hovering = false"
-          title="undo last placement"
+          title="undo last modification"
         >
-          UNDO
+          UNDO<br><span style="font-size:.66em">ctrl + z</span>
+        </button>
+        <button
+          class="footerButton"
+          id="redoButton"
+          onclick="window.Redo()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="redo last modification"
+        >
+          REDO<br><span style="font-size: .66em">ctrl + shift + z</span>
         </button>
         <span class="menuLabel">
           HOLES
@@ -461,7 +479,7 @@
       var url = 'https://srmcgann.github.io/holepunch3D/destroy.mp3'
       await fetch(url).then(res=>res.blob()).then(data => {
         destroy.loop = false
-        destroy.volume = .8
+        destroy.volume = 1
         destroy.src = URL.createObjectURL(data)
       })
 
@@ -1183,15 +1201,18 @@
       
 
 
+      Coordinates.LoadFPSControls(renderer, {
+        flyMode: true,
+        mSpeed: 15,
+        crossharSel: 2,
+        crosshairSize: .5,
+        showCrosshair: false,
+      })
+      
       const LoadFPS = () => {
+        renderer.cameraMode = 'fps'
+        renderer.useFPSControls = true
         renderer.useKeys = true
-        Coordinates.LoadFPSControls(renderer, {
-          flyMode: true,
-          mSpeed: 15,
-          crossharSel: 2,
-          crosshairSize: .5,
-          showCrosshair: false,
-        })
       }
 
       var accel
@@ -1230,7 +1251,7 @@
               case 38: // up arrow
                 //targPitch -= .025 * accel
                 if(renderer.cameraMode != 'fps'){
-                  targPitch = Math.min(1, Math.max(-1, targPitch))
+                  //targPitch = Math.min(1, Math.max(-1, targPitch))
                 }
               break
               case 39: // right arrow
@@ -1239,7 +1260,7 @@
               case 40: // down arrow
                 //targPitch += .025 * accel
                 if(renderer.cameraMode != 'fps'){
-                  targPitch = Math.min(1, Math.max(-1, targPitch))
+                  //targPitch = Math.min(1, Math.max(-1, targPitch))
                 }
               break
             }
@@ -1402,12 +1423,12 @@
             cursorDist = 100
             UnloadFPS()
             //LoadFPS()
-            targYaw = targYaw = 0
+            targYaw = renderer.yaw = 0
             targRoll = renderer.roll = 0
             targPitch = renderer.pitch = 0 //-Math.PI/2
-            targX = targX = 0
-            targY = targY = 0
-            targZ = targZ = 200
+            targX = renderer.x = 0
+            targY = renderer.y = 0
+            targZ = renderer.z = 200
             var ap = renderer.ActualPosition()
             cameras[0].x = ap.x
             cameras[0].y = ap.y
@@ -1543,7 +1564,6 @@
                   blackholes[${bh.idx}].mass = ${bh.om};
                 `,
               })
-              console.log(history[historyTop-1])
             }
           })
           blackholes.map(v=>{
@@ -1607,11 +1627,11 @@
               shipView = !shipView
               if(shipView && renderer.cameraMode != 'fps'){
                 LoadFPS()
-                targZ = ship.x
+                targX = ship.x
                 targY = ship.y
                 targZ = ship.z
                 targRoll = -ship.vecRoll
-                targPitch =- ship.vecPitch
+                targPitch = -ship.vecPitch
                 targYaw = -ship.vecYaw
               }
             }
@@ -1649,18 +1669,77 @@
               if(!addingMass && !launched && alive) SpawnBlackHole()
             }
           }
+          var av = AxisView()
+          console.log(av)
           switch(e.keyCode){
             case 37:
-              console.log(AxisView())
-              switch(AxisView()){
+              switch(av){
+                case 'X':
+                  targYaw = 0
+                  targPitch = 0
+                break
+                case 'Y':
+                  targYaw = -Math.PI / 2
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw = -Math.PI / 2
+                  targPitch = 0
+                break
+                case '-X':
+                  targYaw = Math.PI
+                  targPitch = 0
+                break
+                case '-Y':
+                  targYaw = Math.PI / 2
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw = Math.PI/2
+                  targPitch = 0
+                break
+              }
+            break
+            case 38:
+              switch(av){
+                case 'X':
+                  targYaw = 0
+                  targPitch = -Math.PI/2
+                break
+                case 'Y':
+                  targYaw = Math.PI
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw = 0
+                  targPitch = -Math.PI / 2
+                break
+                case '-X':
+                  targYaw = 0
+                  targPitch = -Math.PI/2
+                break
+                case '-Y':
+                  targYaw = 0
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw = 0
+                  targPitch = -Math.PI/2
+                break
+              }
+            break
+            case 39:
+              switch(av){
                 case 'X':
                   targYaw = Math.PI
                   targPitch = 0
                 break
                 case 'Y':
+                  targYaw = Math.PI/2
+                  targPitch = 0
                 break
                 case 'Z':
-                  targYaw = Math.PI / 2
+                  targYaw = Math.PI/2
                   targPitch = 0
                 break
                 case '-X':
@@ -1668,6 +1747,8 @@
                   targPitch = 0
                 break
                 case '-Y':
+                  targYaw = -Math.PI/2
+                  targPitch = 0
                 break
                 case '-Z':
                   targYaw = -Math.PI/2
@@ -1675,11 +1756,33 @@
                 break
               }
             break
-            case 38:
-            break
-            case 39:
-            break
             case 40:
+              switch(av){
+                case 'X':
+                  targYaw = 0
+                  targPitch = Math.PI/2
+                break
+                case 'Y':
+                  targYaw = 0
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw = 0
+                  targPitch = Math.PI / 2
+                break
+                case '-X':
+                  targYaw = 0
+                  targPitch = Math.PI/2
+                break
+                case '-Y':
+                  targYaw = Math.PI
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw = 0
+                  targPitch = Math.PI/2
+                break
+              }
             break
           }
         }
@@ -1771,7 +1874,6 @@
         alive = true
         launched = false
         addingMass = false
-        shipView = false
         targets = []
         
         switch(level) {
@@ -1786,10 +1888,12 @@
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
-            if(initBlackHoles || renderer.cameraMode == 'default')
+            if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
               RestoreCam()
+            }
           break
         }
+        shipView = false
         
         ship = {
           x: initShipX,
@@ -2094,35 +2198,51 @@
           if(launched && alive){
             switch(AxisView()){
               case 'X':
+                targX += (-ship.z - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32+ship.x+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
               break
               case 'Y':
                 targX += (-ship.x - targX) / 5
                 targY += (-ship.z - targY) / 5
-                targZ += -(32+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
-                               targZ) / 20
+                targZ += (32+ship.y+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
+                               targZ) / 8
               break
               case 'Z':
                 targX += (-ship.x - targX) / 5
                 targY += (-ship.y - targY) / 5
-                targZ += (32+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
-                               targZ) / 20
+                targZ += ((32-ship.z+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
               break
               case '-X':
+                targX += (ship.z - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32-ship.x+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
               break
               case '-Y':
+                targX += (-ship.x - targX) / 5
+                targY += (ship.z - targY) / 5
+                targZ += (32-ship.y+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
+                               targZ) / 8
               break
               case '-Z':
+                targX += (ship.x - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32+ship.z+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
               break
             }
           }
           
-          renderer.x += (targX - renderer.x) / 3
-          renderer.y += (targY - renderer.y) / 3
-          renderer.z += (targZ - renderer.z) / 3
-          renderer.roll += (targRoll - renderer.roll) / 3
-          renderer.pitch += (targPitch - renderer.pitch) / 3
-          renderer.yaw += (targYaw - renderer.yaw) / 3
         }
+        renderer.x += (targX - renderer.x) / 3
+        renderer.y += (targY - renderer.y) / 3
+        renderer.z += (targZ - renderer.z) / 3
+        renderer.roll += (targRoll - renderer.roll) / 3
+        renderer.pitch += (targPitch - renderer.pitch) / 3
+        renderer.yaw += (targYaw - renderer.yaw) / 3
         
         
         levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%12)
