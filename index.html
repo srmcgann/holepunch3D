@@ -2,12 +2,13 @@
   link https://notoriousbfg.com/hole-punch
   
   to do:
+    suppressible popup describing level objective
+    levels
+    ✔ level opening 'quick spin' for depth perception
+    ✔ smart camera mode - tracks ship from non-ship position
+    ✔ target contact detection and level advancement
     ✔ quick "axis-view" switching (make it the only option?)
       OR multi-view display
-    target contact detection and level advancement
-    smart camera mode - tracks ship from non-ship position
-    ship-tracking camera mode for attempts
-    levels
     ✔ sound effects
     ✔ mute button
     ✔ add / remove / delete blackholes
@@ -46,7 +47,7 @@
       }
       .modal{
         position: fixed;
-        background: #011d;
+        background: #111e;
         z-index: 200;
         height: 100vh;
         width: 100%;
@@ -62,14 +63,12 @@
        margin: 0;
        border-color: #666;
       }
-      #hotkeys{
+      #hotkeys, #currentObjective{
         font-family: monospace;
         width: 500px;
         white-space: pre;
         color: #ff4;
-        background: #1484;
-        border-radius: 5px;
-        border: 1px solid #148a;
+        border-radius: 50px;
         padding: 10px;
         min-height: 500px;
         top: 50%;
@@ -78,6 +77,12 @@
         transform: translate(-50%, -50%);
         display: none;
         overflow-y: auto;
+        background: #2221;
+        box-shadow: 0 0 250px #fff3;
+        border-left: 5px solid #4448;
+        border-top: 5px solid #4448;
+        border-right: 5px solid #0008;
+        border-bottom: 5px solid #0008;
       }
       #header, #footer{
         line-height: 32px;
@@ -140,16 +145,24 @@
         font-size: 20px;
         cursor: pointer;
       }
+      button{
+        font-family: Play;
+      }
       .closeButton{
-        background: #844;
-        color: #faa;
+        left: 50%;
+        line-height: 0;
+        padding-top: 5px;
+        min-height: 32px;
+        transform: translate(-50%);
+        background: #319;
+        color: #dbf;
         text-shadow: 2px 2px 2px #000;
         width: 140px;
         position: absolute;
-        border-top: 1px solid #f88;
-        border-left: 1px solid #f88;
-        border-right: 3px solid #600;
-        border-bottom: 3px solid #600;
+        border-top: 1px solid #84f;
+        border-left: 1px solid #84f;
+        border-right: 3px solid #208;
+        border-bottom: 3px solid #208;
       }
       .muteButton_muted, .muteButton_unmuted{
         border-top: 3px solid #dbd79e;
@@ -169,6 +182,18 @@
       .muteButton_unmuted{
         background-image: url(https://srmcgann.github.io/holepunch3D/audio.png);
       }
+      .logo{
+        width: 400px;
+        position: absolute;
+        margin-top: -50px;
+        margin-left: 20px;
+      }
+      .objImg{
+        width: 100px;
+        position: absolute;
+        margin-top: -50px;
+        margin-left: 25px;
+      }
       #helpButton{
         background: #597;
         border-top: 3px solid #6f8;
@@ -184,7 +209,7 @@
         font-weight:900;
       }
       .massMeterContainer{
-        width: 318px;
+        width: 306px;
         padding-left: 0!important;
       }
       #massMeter{
@@ -195,6 +220,12 @@
         margin-left: 30px;
         vertical-align: top;
         color: #feb
+      }
+      .headerElement{
+        min-width: 300px;
+      }
+      .footerElement{
+        //width: 200px;
       }
       .headerElement, .footerElement{
         margin-left: 3px;
@@ -209,7 +240,6 @@
         line-height: 1em;
         display: inline-block;
         vertical-align: top;
-        min-width: 240px;
         border-radius: 5px;
         border-bottom: 1px solid #888;
         border-right: 1px solid #888;
@@ -257,18 +287,32 @@
         cursor: pointer;
         background-color: #864;
         color: #fff;
-        border-top: 2px solid #db8;
+        border-top: 2px solid #db8;gl
         border-left: 2px solid #db8;
         border-right: 3px solid #543;
         border-bottom: 3px solid #543;
         text-shadow: 2px 2px 2px #120;
       }
+      #loadingText{
+        position: fixed;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        transform: translateY(-50%);
+        font-size: 100px;
+        font-family: Play;
+        color: #4f84;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <div id="loadingText">LOADING</div>
     <div
       class="modal"
       id="dialogueScreen"
+      tabindex="0"
+      onkeydown="window.keysOnButton(event)"
     ></div>
     <div id="header">
       <div id="headerTitle">HOLEPUNCH 3D</div>
@@ -286,7 +330,7 @@
         class="headerButton"
         style="float: right; margin-top: 3px;"
         id="helpButton"
-        onclick="window.ShowHotkeys()"
+        onclick="window.ShowObjective()"
         onmouseover="window.hovering = true"
         onmouseout="window.hovering = false"
         title="show hot keys & instructions"
@@ -296,22 +340,40 @@
     </div>
     <div class="sidebars" id="leftSidebar"></div>
     <div class="sidebars" id="rightSidebar"></div>
-    <div id="hotkeys">
+    <div id="hotkeys"
+      onkeydown="window.keysOnButton(event)"
+      tabindex="0"
+    >
       <button
         class="buttons closeButton"
-        title="close window"
+        title="close this"
         tabindex="0"
-        onclick="window.CloseModal()"
-        style="left: 300px;top:450px"
-        onkeydown="window.keysOnButton(event)"
+        style="top:450px"
         autofocus="true"
-      >close [ESC]</button>
-      ESC     : close this window
-      O       : toggle ship-camera mode
-      H       : toggle HUD (in ship-camera mode)
-      C       : reset camera to default
-      blah<br>
-      blah<br>
+        onclick="window.CloseModal()"
+      >close <span style="font-size:.5em;vertical-align: middle;">[ESC]</span></button>
+
+
+                ARROWS  : rotate view
+                O       : ship-cam view
+                H       : toggle HUD (in ship-camera mode)
+                C       : reset camera to default
+                ESC     : close this window
+    </div>
+    <div
+      id="currentObjective"
+      onkeydown="window.keysOnButton(event)"
+      tabindex="0"
+    >
+      <div id="objectiveText"></div>
+      <button
+        class="buttons closeButton"
+        title="close this"
+        tabindex="0"
+        style="top:450px"
+        autofocus="true"
+        onclick="window.CloseModal()"
+      >close <span style="font-size:.5em;vertical-align: middle;">[ESC]</span></button>
     </div>
     <div id="footer">
       <div id="footerControlCluster">
@@ -390,6 +452,19 @@
         ></button>
       </div>
     </div>
+    <script>
+      var el = document.querySelector('#loadingText')
+      var loaded = false, ct=0
+      window.cancelLoadingText = false
+      var lDraw = () => {
+        var l = ('.').repeat(3+((ct/3|0)%10))
+        el.innerHTML = `${l} loading ${l}`
+        ct++
+        console.log(ct)
+        if(!window.cancelLoadingText) requestAnimationFrame(lDraw)
+      }
+      lDraw()
+    </script>
     <script type="module">
 
       import * as Coordinates from
@@ -402,6 +477,7 @@
       }
       var renderer = await Coordinates.Renderer(rendererOptions)
 
+      
       rendererOptions.context = {
         mode: '2d'
       }
@@ -414,9 +490,12 @@
       
       //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/brutalism1.jpg'
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
-      var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/nebugrid.jpg'
+      var refTexture = 'https://srmcgann.github.io/holepunch3D/bg1.png'
+
+      var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
+      var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
       
-      var showBackground = true
+      var showBackground = false
       var playbackSpeed = 2
       
       var goal = new Audio()
@@ -521,9 +600,15 @@
       */
       
       var HUD = new Image()
-      var url = 'https://srmcgann.github.io/holepunch3D/HUD_teal.png'
+      var url = 'https://srmcgann.github.io/holepunch3D/HUD.png'
       await fetch(url).then(res=>res.blob()).then(data => {
         HUD.src = URL.createObjectURL(data)
+      })
+      
+      var logo = new Image()
+      var url = hp3dLogo
+      await fetch(url).then(res=>res.blob()).then(data => {
+        logo.src = URL.createObjectURL(data)
       })
       
       var HUD_dead = new Image()
@@ -653,7 +738,7 @@
       var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .5}},
+        {lighting: {type: 'ambientLight', value: .25}},
         { uniform: {
           type: 'phong',
           value: 0
@@ -1199,7 +1284,7 @@
       
       var geoOptions = {
         shapeType: 'sprite',
-        map: 'https://srmcgann.github.io/holepunch3D/target.png',
+        map: targetImgURL,
         name: 'target',
         size: 25,
         colorMix: 0,
@@ -1415,6 +1500,21 @@
         document.querySelectorAll('.closeButton')[0].focus()
       }
       
+      window.ShowObjective = () => {
+        var el = document.querySelector('#dialogueScreen')
+        var contents = document.querySelector('#currentObjective').cloneNode(true)
+        el.style.display = 'block'
+        el.innerHTML = ''
+        contents.style.display = 'block'
+        el.appendChild(contents)
+        
+        el = document.querySelector('#objectiveText')
+        el.innerHTML = objectiveText
+
+        modalVisible = true
+        document.querySelectorAll('.closeButton')[0].focus()
+      }
+      
       const LevelReset = (fullReset = false) => {
         document.querySelector('#launchButton').style.background='#f80'
         document.querySelector('#launchButton').style.color='#fff'
@@ -1436,7 +1536,7 @@
       const RestoreCam = () => {
         switch(level){
           case 1:
-            showHUD = false
+            showHUD = true
             cursorDist = 100
             UnloadFPS()
             //LoadFPS()
@@ -1455,7 +1555,7 @@
             cameras[0].yaw = ap.yaw
           break
           case 2:
-            showHUD = false
+            showHUD = true
             cursorDist = 100
             UnloadFPS()
             //LoadFPS()
@@ -1688,9 +1788,11 @@
             }
             if(e.keyCode == 72) showHUD = !showHUD
             if(e.keyCode == 32) {
-              if(!levelComplete){
+              if(levelComplete){
+                LoadLevel(++level, true)
+              }else{
                 if(alive){
-                  if(!launched){
+                  if(!launched && !modalVisible){
                     Launch()
                   }else{
                     LevelReset()
@@ -1714,7 +1816,6 @@
             }
           }
           var av = AxisView()
-          console.log(av)
           switch(e.keyCode){
             case 37:
               switch(av){
@@ -1908,13 +2009,14 @@
       var massNumericEl = document.querySelector("#massNumeric")
       var holeCountEl = document.querySelector("#holeCount")
       var blackholes, screenAlpha, flightpath, ranOnce
-      var holesModified
+      var holesModified, stage, spinTheta, objectiveText
       var targX
       var targY
       var targZ
       var targRoll
       var targPitch
       var targYaw
+      
       const LoadLevel = (level, initBlackHoles=true) => {
       
         var initShipX, initShipY, initShipZ
@@ -1948,11 +2050,13 @@
         launched = false
         addingMass = false
         levelComplete = false
+        spinTheta = 0
         targets = []
         
         switch(level) {
           case 1:
             levelName = 'INTRO'
+            stage = 0
             SpawnTarget(100, 100, 0)
             initShipX = -200
             initShipY = 0
@@ -1961,12 +2065,48 @@
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
-            if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
-              RestoreCam()
-            }
+            objectiveText = 
+`
+<img
+                         src="${hp3dLogo}"
+                         class="logo"
+                         style="float: right"
+                        /> 
+  
+              <span
+                style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+              >LEVEL ${level}</span>
+              <span
+                style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+              >OBJECTIVE</span>
+              <span
+                style="color: #0f4; font-size: 1.5em;"
+              >
+      PLACE BLACK HOLES
+      TO ALTER THE SHIP'S COURSE
+      FLY IT INTO THE TARGET -><img
+                         src="${targetImgURL}"
+                         class="objImg"
+                         style="float: right"
+                        /></span>
+              
+              
+              
+
+                ARROWS  :  rotate view
+                
+                     O  :  ship-cam view
+                     
+                     H  :  toggle HUD (in ship-camera mode)
+                     
+                     C  :  reset camera to default
+                     
+                   ESC  :  close this window
+`
           break
           case 2:
             levelName = 'GENESIS - use arrows'
+            stage = 0
             SpawnTarget(50, -75, -75)
             initShipX = -200
             initShipY = 0
@@ -1975,10 +2115,10 @@
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
-            if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
-              RestoreCam()
-            }
           break
+        }
+        if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
+          RestoreCam()
         }
         shipView = false
         
@@ -2013,10 +2153,12 @@
       LoadLevel(level)
       
       window.CloseModal = () => {
+        console.log('closing modal')
         var el = document.querySelector('#dialogueScreen')
         el.innerHTML = ''
         el.style.display = 'none'
         modalVisible = false
+        if(!ranOnce)stage++
       }
       
       const AxisMarkersVisible = () => {
@@ -2180,7 +2322,7 @@
               vx += dx1 / d * grav * v.mass
               vy += dy1 / d * grav * v.mass
               vz += dz1 / d * grav * v.mass
-              if(d_ < v.mass/2.5) collision = true
+              if(d_ < v.mass/8) collision = true
             }
           })
           return { x1, y1, z1, vx, vy, vz, collision }
@@ -2268,7 +2410,7 @@
       
       var homing = 100
       var drag = 4
-      var grav = 1.5
+      var grav = .4
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -2323,7 +2465,32 @@
               break
             }
           }
-          
+        }
+        
+        if(!launched){
+          switch(stage){
+            case 0:
+              if(!modalVisible && !ranOnce){
+                ShowObjective()
+              }
+            break
+            case 1:
+              if(!ranOnce && spinTheta<Math.PI*2){
+                spinTheta += .2
+              }else{
+                spinTheta = 0
+                if(!ranOnce) renderer.yaw -= Math.PI*2
+                //targYaw -= Math.PI*2
+                stage++
+              }
+            break
+          }
+        }else{
+          if(levelComplete){
+            spinTheta += .01
+          }else{
+            spinTheta = 0
+          }
         }
         
         while(Math.abs(targPitch) > Math.PI){
@@ -2351,7 +2518,7 @@
         renderer.z += (targZ - renderer.z) / 3
         renderer.roll += (targRoll - renderer.roll) / 3
         renderer.pitch += (targPitch - renderer.pitch) / 3
-        renderer.yaw += (targYaw - renderer.yaw) / 3
+        renderer.yaw += ((targYaw + spinTheta) - renderer.yaw) / 3
         
         
         levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%12)
@@ -2384,7 +2551,7 @@
         }
         
         if(shipView && showHUD){
-          Coordinates.Overlay.ctx.globalAlpha = alive ? .25 : screenAlpha
+          Coordinates.Overlay.ctx.globalAlpha = alive ? .5 : screenAlpha
           Coordinates.Overlay.ctx.clearRect(0,0,w,h)
           Coordinates.Overlay.ctx.drawImage(alive ? HUD : HUD_dead,0,0,w,h)
           Coordinates.Overlay.ctx.globalAlpha = 1
@@ -2488,12 +2655,12 @@
                   var ox = subShape.ox
                   var oy = subShape.oy
                   var oz = subShape.oz
-                  var ls = (el.mass + 1) / 10
+                  var ls = 1+(el.mass + 1) / 25
                   for(var j = 0; j < disk.stride; j +=3){
                     var idx = i + j
                     x = disk.vstate[idx+0] = blackholeDiskVerts[j+0] * ls + ox
                     y = disk.vstate[idx+1] = blackholeDiskVerts[j+1] * ls + oy
-                    z = disk.vstate[idx+2]= blackholeDiskVerts[j+2] * ls + oz
+                    z = disk.vstate[idx+2] = blackholeDiskVerts[j+2] * ls + oz
                   }
                 }
               }
@@ -2506,12 +2673,12 @@
                   var ox = subShape.ox
                   var oy = subShape.oy
                   var oz = subShape.oz
-                  var ls = (el.mass + 1) / 10
+                  var ls = 1+(el.mass + 1) / 25
                   for(var j = 0; j < shape.stride; j +=3){
                     var idx = i + j
                     x = shape.vstate[idx+0] = blackholeVerts[j+0] * ls + ox
                     y = shape.vstate[idx+1] = blackholeVerts[j+1] * ls + oy
-                    z = shape.vstate[idx+2]= blackholeVerts[j+2] * ls + oz
+                    z = shape.vstate[idx+2] = blackholeVerts[j+2] * ls + oz
                   }
                 }
               }
@@ -2636,7 +2803,7 @@
                   }
                 }
                 subShape.pitch = (-targPitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
-                subShape.yaw   = (-targYaw) - shape.yaw
+                subShape.yaw   = (-targYaw-spinTheta) - shape.yaw
                 subShape.roll += .0025 * (sIdx %2 ? -1 : 1) * shipSteps
               })
               shape.rotationMode = 2
@@ -2849,7 +3016,7 @@
                       d = Math.hypot(ship.x - targets[0].x,
                                      ship.y - targets[0].y,
                                      ship.z - targets[0].z)
-                      if(d < 20){
+                      if(d < 10){
                         goal.pause()
                         goal.currentTime = 0
                         goal.play()
@@ -3027,8 +3194,8 @@
                 var bx = ar[0]
                 var by = ar[1]
                 var bz = ar[2]
-                var s = 140 * v.mass
-                var n = 1+v.mass/140
+                var s = 100 * v.mass
+                var n = 1+v.mass/100
                 if(!hoverTrigger &&
                   (d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
                     (v.hover && -y < 80*n && -y > -90*n &&
@@ -3075,6 +3242,8 @@
         
         //renderer.Draw(tempCube)
       }
+      
+      window.cancelLoadingText = true
       
     </script>
   </body>
