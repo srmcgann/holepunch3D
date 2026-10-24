@@ -148,6 +148,14 @@
       button{
         font-family: Play;
       }
+      .specialArrow{
+        display: block;
+        position: absolute;
+        left: 289px;
+        margin-top: -34px;
+        font-size: 44px;
+        transform: rotate(-15deg);
+      }
       .closeButton{
         left: 50%;
         line-height: 0;
@@ -191,7 +199,7 @@
       .objImg{
         width: 100px;
         position: absolute;
-        margin-top: -50px;
+        margin-top: 5px;
         margin-left: 25px;
       }
       #helpButton{
@@ -333,7 +341,7 @@
         onclick="window.ShowObjective()"
         onmouseover="window.hovering = true"
         onmouseout="window.hovering = false"
-        title="show hot keys & instructions"
+        title="show objective"
       >
         ?
       </button>
@@ -457,7 +465,7 @@
       var loaded = false, ct=0
       window.cancelLoadingText = false
       var lDraw = () => {
-        var l = ('.').repeat(3+((ct/3|0)%10))
+        var l = ('.').repeat(3+((ct/3|0)%5))
         el.innerHTML = `${l} loading ${l}`
         ct++
         console.log(ct)
@@ -494,6 +502,7 @@
 
       var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
       var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
+      var arrowKeys = 'https://srmcgann.github.io/holepunch3D/arrowKeys.png'
       
       var showBackground = false
       var playbackSpeed = 2
@@ -1448,7 +1457,7 @@
               if(el.id != 'launchButton') el.style.display = 'none'
             })
           }else{
-            LevelReset(true)
+            LoadLevel(false)
           }
         }
       }
@@ -1501,6 +1510,7 @@
       }
       
       window.ShowObjective = () => {
+        console.log('ranOnce = ', ranOnce)
         var el = document.querySelector('#dialogueScreen')
         var contents = document.querySelector('#currentObjective').cloneNode(true)
         el.style.display = 'block'
@@ -1513,17 +1523,6 @@
 
         modalVisible = true
         document.querySelectorAll('.closeButton')[0].focus()
-      }
-      
-      const LevelReset = (fullReset = false) => {
-        document.querySelector('#launchButton').style.background='#f80'
-        document.querySelector('#launchButton').style.color='#fff'
-        document.querySelector('#launchButton').innerHTML = 'LAUNCH'
-        document.querySelectorAll('.footerButton').forEach(el => {
-          el.style.display = 'inline-block'
-        })
-        AllSoundsOff()
-        LoadLevel(level, fullReset)
       }
       
       const UnloadFPS = async () => {
@@ -1573,6 +1572,25 @@
             cameras[0].pitch = ap.pitch
             cameras[0].yaw = ap.yaw
           break
+          case 3:
+            showHUD = true
+            cursorDist = 100
+            UnloadFPS()
+            //LoadFPS()
+            targYaw = renderer.yaw = 0
+            targRoll = renderer.roll = 0
+            targPitch = renderer.pitch = 0 //-Math.PI/2
+            targX = renderer.x = 0
+            targY = renderer.y = 0
+            targZ = renderer.z = 250
+            var ap = renderer.ActualPosition()
+            cameras[0].x = ap.x
+            cameras[0].y = ap.y
+            cameras[0].z = ap.z
+            cameras[0].roll = ap.z
+            cameras[0].pitch = ap.pitch
+            cameras[0].yaw = ap.yaw
+          break
         }
       }
       
@@ -1587,7 +1605,7 @@
       var levelComplete
       
       const Init = () => {
-        level = 1
+        level = 3
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
@@ -1726,10 +1744,11 @@
         
         window.onmousedown = e => {
           if(levelComplete){
-            LoadLevel(++level, true)
+            level++
+            LoadLevel(true)
           }else{
             if(!alive){
-              LevelReset()
+              LoadLevel()
             }else{
               if(AxisMarkersVisible() &&
                  e.button == 0 && renderer.cameraMode != 'fps') {
@@ -1760,7 +1779,7 @@
           console.log(e.keyCode)
           
           if(!alive && !levelComplete){
-             LevelReset()
+            LoadLevel()
            }else{
    
             keys[e.keyCode] = true
@@ -1789,13 +1808,14 @@
             if(e.keyCode == 72) showHUD = !showHUD
             if(e.keyCode == 32) {
               if(levelComplete){
-                LoadLevel(++level, true)
+                level++
+                LoadLevel(true)
               }else{
                 if(alive){
                   if(!launched && !modalVisible){
                     Launch()
                   }else{
-                    LevelReset()
+                    LoadLevel()
                   }
                 }
               }
@@ -2017,10 +2037,19 @@
       var targPitch
       var targYaw
       
-      const LoadLevel = (level, initBlackHoles=true) => {
+      const LoadLevel = (initBlackHoles=false) => {
       
         var initShipX, initShipY, initShipZ
         var initShipVx, initShipVy, initShipVz
+
+        document.querySelector('#launchButton').style.background='#f80'
+        document.querySelector('#launchButton').style.color='#fff'
+        document.querySelector('#launchButton').innerHTML = 'LAUNCH'
+        document.querySelectorAll('.footerButton').forEach(el => {
+          el.style.display = 'inline-block'
+        })
+        AllSoundsOff()
+
         smoke = []
         particles = []
         window.hovering = false
@@ -2054,6 +2083,10 @@
         targets = []
         
         switch(level) {
+
+//////////////////////////////
+//         LEVEL 1          //
+//////////////////////////////
           case 1:
             levelName = 'INTRO'
             stage = 0
@@ -2075,16 +2108,17 @@
   
               <span
                 style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >LEVEL ${level}</span>
-              <span
+              >LEVEL ${level}</span>              <span
                 style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
               >OBJECTIVE</span>
               <span
                 style="color: #0f4; font-size: 1.5em;"
               >
-      PLACE BLACK HOLES
-      TO ALTER THE SHIP'S COURSE
-      FLY IT INTO THE TARGET -><img
+              
+    PLACE BLACK HOLES TO ALTER
+    THE SHIP'S COURSE.
+    
+    FLY IT INTO THE TARGET <div class="specialArrow">&#10136;</div><img
                          src="${targetImgURL}"
                          class="objImg"
                          style="float: right"
@@ -2093,21 +2127,23 @@
               
               
 
-                ARROWS  :  rotate view
-                
-                     O  :  ship-cam view
-                     
-                     H  :  toggle HUD (in ship-camera mode)
-                     
-                     C  :  reset camera to default
-                     
-                   ESC  :  close this window
+            SPACE   :  launch ship
+            ARROWS  :  rotate view
+                 O  :  ship-cam view
+                 H  :  toggle HUD (in ship-camera mode)
+                 C  :  reset camera to default
+               ESC  :  close this window
 `
           break
+          
+
+//////////////////////////////
+//         LEVEL 2          //
+//////////////////////////////
           case 2:
-            levelName = 'GENESIS - use arrows'
+            levelName = 'PRACTICE CHANGING VIEWS'
             stage = 0
-            SpawnTarget(50, -75, -75)
+            SpawnTarget(50, 0, -75)
             initShipX = -200
             initShipY = 0
             initShipZ = 0
@@ -2115,6 +2151,103 @@
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
+
+            objectiveText = 
+`
+<img
+                         src="${hp3dLogo}"
+                         class="logo"
+                         style="float: right"
+                        /> 
+  
+              <span
+                style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+              >LEVEL ${level}</span>              <span
+                style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+              >OBJECTIVE</span>
+              <span
+                style="color: #0f4; font-size: 1.5em;"
+              >              
+    THE TARGET HAS MOVED!
+    USE THE ARROW KEYS TO ROTATE THE VIEW
+
+                <img
+                         src="${arrowKeys}"
+                         class="objImg"
+                         style="float: right"
+                        /></span>
+              
+              
+
+
+
+              
+              
+
+                SPACE   :  launch ship
+                ARROWS  :  rotate view
+                     O  :  ship-cam view
+                     H  :  toggle HUD (in ship-camera mode)
+                     C  :  reset camera to default
+                   ESC  :  close this window
+`
+
+          break
+
+//////////////////////////////
+//         LEVEL 3          //
+//////////////////////////////
+          case 3:
+            levelName = 'AVOID THE OBSTACLE'
+            stage = 0
+            SpawnTarget(100, 0, 0)
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+
+            objectiveText = 
+`
+<img
+                         src="${hp3dLogo}"
+                         class="logo"
+                         style="float: right"
+                        /> 
+  
+              <span
+                style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+              >LEVEL ${level}</span>              <span
+                style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+              >OBJECTIVE</span>
+              <span
+                style="color: #0f4; font-size: 1.5em;"
+              >              
+    AVOID THE OBSTACLE!
+
+                <img
+                         src="${arrowKeys}"
+                         class="objImg"
+                         style="float: right"
+                        /></span>
+              
+              
+
+
+
+              
+              
+
+                SPACE   :  launch ship
+                ARROWS  :  rotate view
+                     O  :  ship-cam view
+                     H  :  toggle HUD (in ship-camera mode)
+                     C  :  reset camera to default
+                   ESC  :  close this window
+`
+
           break
         }
         if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
@@ -2150,7 +2283,7 @@
         
         levelNameEl.innerHTML = levelName
       }
-      LoadLevel(level)
+      LoadLevel(true)
       
       window.CloseModal = () => {
         console.log('closing modal')
