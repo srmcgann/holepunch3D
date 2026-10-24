@@ -468,7 +468,6 @@
         var l = ('.').repeat(3+((ct/3|0)%5))
         el.innerHTML = `${l} loading ${l}`
         ct++
-        console.log(ct)
         if(!window.cancelLoadingText) requestAnimationFrame(lDraw)
       }
       lDraw()
@@ -504,7 +503,7 @@
       var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
       var arrowKeys = 'https://srmcgann.github.io/holepunch3D/arrowKeys.png'
       
-      var showBackground = false
+      var showBackground = true
       var playbackSpeed = 2
       
       var goal = new Audio()
@@ -668,16 +667,23 @@
       var boundingBoxSize = 1e3/4
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .33}},
+        {lighting: {type: 'ambientLight', value: .6}},
         { uniform: {
           type: 'phong',
-          value: .6
+          value: .05
         } },
         { uniform: {
           type: 'reflection',
           map: showBackground ? refTexture : '',
           playbackSpeed,
           value: .1
+        } },
+        { uniform: {
+          type: 'refraction',
+          angleOfRefraction: -.5,
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .4
         } },
       ]
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -898,6 +904,39 @@
           await backgroundShader.ConnectGeometry(geometry)
         })
       }
+
+      var basePlanetVerts
+      var iPlanetc = 10
+      var pointArray = []
+      Array(iPlanetc).fill().map((v, i) => {
+        x = 1e5
+        y = 1e5
+        z = 1e5
+        pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/objs2/threebius/threebius_lowpoly_smooth_shading.obj',
+        map: 'https://srmcgann.github.io/objs2/threebius/texture.png',
+        //equirectangular: false,
+        name: 'planet',
+        //sphereize: 1,
+        //subs: 2,
+        scaleX: .25,
+        scaleY: .25,
+        scaleZ: .25,
+        //averageNormals: true,
+        playbackSpeed: 1,
+        size: 5,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        basePlanetVerts = structuredClone(geometry.vertices)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          shapes.push(res)
+          await shader.ConnectGeometry(res)
+        })
+      })
       
       var geoOptions = {
         shapeType: 'obj',
@@ -919,7 +958,7 @@
         color: 0x110022,
         colorMix: 0,
       }
-      if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
         await cubeGridShader.ConnectGeometry(geometry)
       })  
@@ -1267,7 +1306,7 @@
         name: 'temp cube',
         size: 2e3 *.866,
       }	
-      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         Coordinates.ShapeToLines(geometry, {
           color: 0xff8800,
           alpha: .8,
@@ -1605,7 +1644,7 @@
       var levelComplete
       
       const Init = () => {
-        level = 3
+        level = 1
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
@@ -2030,6 +2069,7 @@
       var holeCountEl = document.querySelector("#holeCount")
       var blackholes, screenAlpha, flightpath, ranOnce
       var holesModified, stage, spinTheta, objectiveText
+      var planets = []
       var targX
       var targY
       var targZ
@@ -2201,6 +2241,21 @@
             levelName = 'AVOID THE OBSTACLE'
             stage = 0
             SpawnTarget(100, 0, 0)
+            
+            planets = []
+            var sd = 4
+            for(var i = 0; i < sd; i++){
+              var ls = 60
+              planets.push(
+                {
+                  x: 0,
+                  y: S(p=Math.PI*2/sd*i) * ls,
+                  z: C(p) * ls,
+                  size: ls/10,
+                }
+              )
+            }
+            
             initShipX = -200
             initShipY = 0
             initShipZ = 0
@@ -2739,6 +2794,30 @@
                 }
               }
               smoke = smoke.filter((v, i) =>v.life>0 && smoke.length-iSmokec)
+              renderer.Draw(shape)
+            break
+            case 'planet':
+              shape.shapeData.map((subShape, sIdx) => {
+                if(sIdx < planets.length){
+                  var pl = planets[sIdx]
+                  subShape.x = pl.x - subShape.ox
+                  subShape.y = pl.y - subShape.oy
+                  subShape.z = pl.z - subShape.oz
+                  for(var i = 0; i < shape.stride; i += 3){
+                    var idx = i + sIdx * shape.stride
+                    x = basePlanetVerts[i+0] * pl.size + subShape.ox
+                    y = basePlanetVerts[i+1] * pl.size + subShape.oy
+                    z = basePlanetVerts[i+2] * pl.size + subShape.oz
+                    shape.vstate[idx+0] = x
+                    shape.vstate[idx+1] = y
+                    shape.vstate[idx+2] = z
+                  }
+                }else{
+                  subShape.x = 0
+                  subShape.y = 0
+                  subShape.z = 0
+                }
+              })
               renderer.Draw(shape)
             break
             case 'particles':
@@ -3372,7 +3451,7 @@
           misplacedShape.alpha = diff/2
           renderer.Draw(misplacedShape)
         }
-        
+       
         //renderer.Draw(tempCube)
       }
       
