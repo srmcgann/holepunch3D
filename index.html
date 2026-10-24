@@ -2,14 +2,14 @@
   link https://notoriousbfg.com/hole-punch
   
   to do:
-    sound effects
-    mute button
-    quick "axis-view" switching (make it the only option?)
+    ✔ quick "axis-view" switching (make it the only option?)
       OR multi-view display
     target contact detection and level advancement
     smart camera mode - tracks ship from non-ship position
     ship-tracking camera mode for attempts
     levels
+    ✔ sound effects
+    ✔ mute button
     ✔ add / remove / delete blackholes
     ✔ set / change blackhole mass
     ✔ undo button
@@ -419,6 +419,14 @@
       var showBackground = true
       var playbackSpeed = 2
       
+      var goal = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/goal.ogg'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        goal.loop = false
+        goal.volume = 1
+        goal.src = URL.createObjectURL(data)
+      })
+
       var increase = new Audio()
       var url = 'https://srmcgann.github.io/holepunch3D/increase.mp3'
       await fetch(url).then(res=>res.blob()).then(data => {
@@ -522,6 +530,12 @@
       var url = 'https://srmcgann.github.io/holepunch3D/HUD_red.png'
       await fetch(url).then(res=>res.blob()).then(data => {
         HUD_dead.src = URL.createObjectURL(data)
+      })
+      
+      var victoryScreen = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/victory.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        victoryScreen.src = URL.createObjectURL(data)
       })
       
       var deathScreen = new Image()
@@ -1180,7 +1194,7 @@
       })
       
       const SpawnTarget = (x, y, z, vx=0, vy=0, vz=0) => {
-        targets.push({ x, y, z, vx, vy, vz })
+        targets=[{ x, y, z, vx, vy, vz }]
       }
       
       var geoOptions = {
@@ -1440,6 +1454,25 @@
             cameras[0].pitch = ap.pitch
             cameras[0].yaw = ap.yaw
           break
+          case 2:
+            showHUD = false
+            cursorDist = 100
+            UnloadFPS()
+            //LoadFPS()
+            targYaw = renderer.yaw = 0
+            targRoll = renderer.roll = 0
+            targPitch = renderer.pitch = 0 //-Math.PI/2
+            targX = renderer.x = 0
+            targY = renderer.y = 0
+            targZ = renderer.z = 250
+            var ap = renderer.ActualPosition()
+            cameras[0].x = ap.x
+            cameras[0].y = ap.y
+            cameras[0].z = ap.z
+            cameras[0].roll = ap.z
+            cameras[0].pitch = ap.pitch
+            cameras[0].yaw = ap.yaw
+          break
         }
       }
       
@@ -1451,6 +1484,7 @@
       var level, showHUD, modalVisible
       var cameras, predictiveLength, shipSteps
       var muted, history, historyPointer, historyTop
+      var levelComplete
       
       const Init = () => {
         level = 1
@@ -1591,27 +1625,31 @@
         }
         
         window.onmousedown = e => {
-          if(!alive){
-             LevelReset()
+          if(levelComplete){
+            LoadLevel(++level, true)
           }else{
-            if(AxisMarkersVisible() &&
-               e.button == 0 && renderer.cameraMode != 'fps') {
-              if(alive && !launched){
-                if((l = blackholes.filter(v=>v.hover)).length) {
-                  if(l[0].buttonHover){
-                    l[0].buttonPress = l[0].buttonHover
-                    l[0].om = l[0].mass
+            if(!alive){
+              LevelReset()
+            }else{
+              if(AxisMarkersVisible() &&
+                 e.button == 0 && renderer.cameraMode != 'fps') {
+                if(alive && !launched){
+                  if((l = blackholes.filter(v=>v.hover)).length) {
+                    if(l[0].buttonHover){
+                      l[0].buttonPress = l[0].buttonHover
+                      l[0].om = l[0].mass
+                    }else{
+                      l[0].dragging = true
+                      l[0].tmx = cursor.x
+                      l[0].tmy = cursor.y
+                      l[0].tmz = cursor.z
+                      l[0].ox = l[0].x
+                      l[0].oy = l[0].y
+                      l[0].oz = l[0].z
+                    }
                   }else{
-                    l[0].dragging = true
-                    l[0].tmx = cursor.x
-                    l[0].tmy = cursor.y
-                    l[0].tmz = cursor.z
-                    l[0].ox = l[0].x
-                    l[0].oy = l[0].y
-                    l[0].oz = l[0].z
+                    SpawnBlackHole()
                   }
-                }else{
-                  SpawnBlackHole()
                 }
               }
             }
@@ -1621,7 +1659,7 @@
         window.onkeydown = e => {
           console.log(e.keyCode)
           
-          if(!alive){
+          if(!alive && !levelComplete){
              LevelReset()
            }else{
    
@@ -1650,11 +1688,13 @@
             }
             if(e.keyCode == 72) showHUD = !showHUD
             if(e.keyCode == 32) {
-              if(alive){
-                if(!launched){
-                  Launch()
-                }else{
-                  LevelReset()
+              if(!levelComplete){
+                if(alive){
+                  if(!launched){
+                    Launch()
+                  }else{
+                    LevelReset()
+                  }
                 }
               }
             }
@@ -1665,11 +1705,12 @@
                 targZ = 20
                 renderer.cameraMode = 'default'
               }else{
-                LoadFPS()
+                //LoadFPS()
               }
             }
             if(e.keyCode == 13) {
-              if(!addingMass && !launched && alive) SpawnBlackHole()
+              if(!addingMass && !launched && alive && !levelComplete)
+                    SpawnBlackHole()
             }
           }
           var av = AxisView()
@@ -1896,7 +1937,7 @@
         shipShape.yaw = Math.PI
         screenAlpha = 0
         
-        shipSteps = 3
+        shipSteps = 2
         
         //SpawnBlackHole(0,20,0,5)
         //bhIdx++
@@ -1906,13 +1947,27 @@
         alive = true
         launched = false
         addingMass = false
+        levelComplete = false
         targets = []
         
         switch(level) {
           case 1:
-            levelName = 'FLIGHT TRAINING'
-
-            SpawnTarget(100, 0, 0)
+            levelName = 'INTRO'
+            SpawnTarget(100, 100, 0)
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+            if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
+              RestoreCam()
+            }
+          break
+          case 2:
+            levelName = 'GENESIS - use arrows'
+            SpawnTarget(50, -75, -75)
             initShipX = -200
             initShipY = 0
             initShipZ = 0
@@ -1966,7 +2021,8 @@
       
       const AxisMarkersVisible = () => {
         return !window.hovering &&  !modalVisible &&
-          !document.pointerLockElement && alive && !launched
+          !document.pointerLockElement && alive &&
+            !levelComplete && !launched
       }
 
       var mx, my
@@ -2212,7 +2268,7 @@
       
       var homing = 100
       var drag = 4
-      var grav = 2
+      var grav = 1.5
       window.Draw = () => {
         var t = renderer.frameCount/60
         
@@ -2333,32 +2389,18 @@
           Coordinates.Overlay.ctx.drawImage(alive ? HUD : HUD_dead,0,0,w,h)
           Coordinates.Overlay.ctx.globalAlpha = 1
         }
-        if(!alive){
+        if(levelComplete){
           screenAlpha += .01
           screenAlpha = Math.min(.75, screenAlpha)
           Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
-          Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
-          /*
-          Coordinates.Overlay.ctx.globalAlpha = screenAlpha
-          Coordinates.Overlay.ctx.fillStyle = '#400c'
-          Coordinates.Overlay.ctx.fillRect(0,0,w,h)
-          var fs
-          Coordinates.Overlay.ctx.font = (fs=200) + 'px Play'
-          Coordinates.Overlay.ctx.strokeStyle = '#f00'
-          Coordinates.Overlay.ctx.fillStyle = '#800'
-          Coordinates.Overlay.ctx.textAlign = 'center'
-          Coordinates.Overlay.ctx.fillText('ded', w/2, h/2)
-          Coordinates.Overlay.ctx.lineWidth = 4
-          Coordinates.Overlay.ctx.strokeText('ded', w/2, h/2)
-
-          Coordinates.Overlay.ctx.font = (fs=100) + 'px Play'
-          Coordinates.Overlay.ctx.strokeStyle = '#f00'
-          Coordinates.Overlay.ctx.fillStyle = '#800'
-          Coordinates.Overlay.ctx.textAlign = 'center'
-          Coordinates.Overlay.ctx.fillText('hit spacebar to try again', w/2, h/2 + fs)
-          Coordinates.Overlay.ctx.lineWidth = 1
-          Coordinates.Overlay.ctx.strokeText('hit spacebar to try again', w/2, h/2 + fs)
-          */
+          Coordinates.Overlay.ctx.drawImage(victoryScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
+        }else{
+          if(!alive){
+            screenAlpha += .01
+            screenAlpha = Math.min(.75, screenAlpha)
+            Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
+            Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
+          }
           Coordinates.Overlay.ctx.globalAlpha = 1
         }
 
@@ -2803,7 +2845,18 @@
               if(alive){
                 for(var i = 0; i < shipSteps; i++){
                   if(launched){
-                    if(alive){
+                    if(alive && !levelComplete){
+                      d = Math.hypot(ship.x - targets[0].x,
+                                     ship.y - targets[0].y,
+                                     ship.z - targets[0].z)
+                      if(d < 20){
+                        goal.pause()
+                        goal.currentTime = 0
+                        goal.play()
+                        console.log('goal reached')
+                        levelComplete = true
+                        AllSoundsOff()
+                      }
                       var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
                       ship.x = ar.x1
                       ship.y = ar.y1
@@ -2818,7 +2871,7 @@
                         engines.currentTime = 0
                       }
                     }
-                    if(alive){
+                    if(alive && !levelComplete){
                       var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
                       var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
                       
@@ -2862,7 +2915,7 @@
                          //shipView = false
                       }
                       d = Math.hypot(ship.vx, ship.vy, ship.vz)
-                      if(alive && d > .01){
+                      if(alive && d > .01 && !levelComplete){
                         x = ship.vx / d * 3
                         y = ship.vy / d * 3
                         z = ship.vz / d * 3
@@ -2914,7 +2967,7 @@
                     }
                   }
                 }
-                shape.roll += .02 * (launched ? 16 : 2)
+                if(!levelComplete) shape.roll += .02 * (launched ? 16 : 2)
                 renderer.Draw(shape)
               }
             break
