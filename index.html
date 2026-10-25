@@ -683,7 +683,7 @@
           type: 'refraction',
           angleOfRefraction: -.5,
           map: showBackground ? refTexture : '',
-          enabled: false,
+          enabled: true,
           playbackSpeed,
           value: .4
         } },
@@ -977,6 +977,7 @@
       })
       
       var baseObstacleVerts
+      var baseObstacleNormalVecs
       var cl = 1
       var rw = 1
       var br = 1
@@ -992,6 +993,7 @@
         shapeType: 'obj',
         url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
         //size: 110,
+        averageNormals: true,
         scaleX: 40,
         scaleY: 40,
         scaleZ: 40,
@@ -1017,6 +1019,7 @@
         }
         */
         baseObstacleVerts = structuredClone(geometry.vertices)
+        baseObstacleNormalVecs = structuredClone(geometry.normalVecs)
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
           shapes.push(res)
           await shader.ConnectGeometry(res)
@@ -2983,6 +2986,20 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                     shape.vertices[i+0+j*3] = x
                     shape.vertices[i+1+j*3] = y
                     shape.vertices[i+2+j*3] = z
+                    x = baseObstacleNormalVecs[i+0+j*3]
+                    y = baseObstacleNormalVecs[i+1+j*3]
+                    z = baseObstacleNormalVecs[i+2+j*3]
+                    p = Math.atan2(y,z) + t
+                    d = Math.hypot(y,z)
+                    y = S(p) * d
+                    z = C(p) * d
+                    p = Math.atan2(x,z) + tht
+                    d = Math.hypot(x,z)
+                    x = S(p) * d
+                    z = C(p) * d
+                    shape.normalVecs[i+0+j*3] = x
+                    shape.normalVecs[i+1+j*3] = y
+                    shape.normalVecs[i+2+j*3] = z
                   }
                   var x1 = shape.vertices[i+0]
                   var y1 = shape.vertices[i+1]
