@@ -64,6 +64,7 @@
        border-color: #666;
       }
       #hotkeys, #currentObjective{
+        overflow:  hidden;
         font-family: monospace;
         width: 500px;
         white-space: pre;
@@ -498,10 +499,10 @@
       //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/brutalism1.jpg'
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
       var refTexture = 'https://srmcgann.github.io/holepunch3D/bg1.png'
-
       var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
       var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
       var arrowKeys = 'https://srmcgann.github.io/holepunch3D/arrowKeys.png'
+      var obstacleImg = 'https://srmcgann.github.io/holepunch3D/obstacle.png'
       
       var showBackground = true
       var playbackSpeed = 2
@@ -667,10 +668,10 @@
       var boundingBoxSize = 1e3/4
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .6}},
+        {lighting: {type: 'ambientLight', value: .1}},
         { uniform: {
           type: 'phong',
-          value: .05
+          value: .8
         } },
         { uniform: {
           type: 'reflection',
@@ -682,6 +683,7 @@
           type: 'refraction',
           angleOfRefraction: -.5,
           map: showBackground ? refTexture : '',
+          enabled: false,
           playbackSpeed,
           value: .4
         } },
@@ -906,7 +908,7 @@
       }
 
       var basePlanetVerts
-      var iPlanetc = 10
+      var iPlanetc = 20
       var pointArray = []
       Array(iPlanetc).fill().map((v, i) => {
         x = 1e5
@@ -916,15 +918,15 @@
       })
       var geoOptions = {
         shapeType: 'obj',
-        url: 'https://srmcgann.github.io/objs2/threebius/threebius_lowpoly_smooth_shading.obj',
-        map: 'https://srmcgann.github.io/objs2/threebius/texture.png',
+        url: 'https://srmcgann.github.io/holepunch3D/geosphere_uvs.obj?3',
+        map: 'https://srmcgann.github.io/Coordinates/resources/earth_with_clouds_animated_lowres.mp4',
         //equirectangular: false,
         name: 'planet',
         //sphereize: 1,
         //subs: 2,
-        scaleX: .25,
-        scaleY: .25,
-        scaleZ: .25,
+        scaleX: 4,
+        scaleY: 4,
+        scaleZ: 4,
         //averageNormals: true,
         playbackSpeed: 1,
         size: 5,
@@ -958,7 +960,7 @@
         color: 0x110022,
         colorMix: 0,
       }
-      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
         await cubeGridShader.ConnectGeometry(geometry)
       })  
@@ -1644,7 +1646,7 @@
       var levelComplete
       
       const Init = () => {
-        level = 1
+        level = 3
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
@@ -2243,15 +2245,23 @@
             SpawnTarget(100, 0, 0)
             
             planets = []
-            var sd = 4
+            var ls = 60
+            planets.push(
+              {
+                x: 0,
+                y: 0,
+                z: 0,
+                size: ls/5,
+              }
+            )
+            var sd = 16
             for(var i = 0; i < sd; i++){
-              var ls = 60
               planets.push(
                 {
                   x: 0,
-                  y: S(p=Math.PI*2/sd*i) * ls,
-                  z: C(p) * ls,
-                  size: ls/10,
+                  y: S(p=Math.PI*2/sd*i) * ls*1.5,
+                  z: C(p) * ls*1.5,
+                  size: ls/20,
                 }
               )
             }
@@ -2278,29 +2288,13 @@
                 style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
               >OBJECTIVE</span>
               <span
-                style="color: #0f4; font-size: 1.5em;"
-              >              
-    AVOID THE OBSTACLE!
+                style="color: #0f4; font-size: 1.5em;">    AVOID THE OBSTACLE!
 
                 <img
-                         src="${arrowKeys}"
+                         src="${obstacleImg}"
                          class="objImg"
-                         style="float: right"
+                         style="width:443px;margin-top:-15px;margin-left:-146px;"
                         /></span>
-              
-              
-
-
-
-              
-              
-
-                SPACE   :  launch ship
-                ARROWS  :  rotate view
-                     O  :  ship-cam view
-                     H  :  toggle HUD (in ship-camera mode)
-                     C  :  reset camera to default
-                   ESC  :  close this window
 `
 
           break
@@ -2800,6 +2794,13 @@
               shape.shapeData.map((subShape, sIdx) => {
                 if(sIdx < planets.length){
                   var pl = planets[sIdx]
+                  
+                  p = Math.atan2(pl.y, pl.z) + .01
+                  d = Math.hypot(pl.y, pl.z)
+                  pl.x = sIdx ? S(Math.PI*8/(planets.length-1)*sIdx)*20*C(t) : 0
+                  pl.y = S(p) * d
+                  pl.z = C(p) * d
+                  
                   subShape.x = pl.x - subShape.ox
                   subShape.y = pl.y - subShape.oy
                   subShape.z = pl.z - subShape.oz
