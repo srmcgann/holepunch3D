@@ -152,7 +152,7 @@
       .specialArrow{
         display: block;
         position: absolute;
-        left: 289px;
+        left: 370px;
         margin-top: -34px;
         font-size: 44px;
         transform: rotate(-15deg);
@@ -191,15 +191,15 @@
       .muteButton_unmuted{
         background-image: url(https://srmcgann.github.io/holepunch3D/audio.png);
       }
+      #objectiveText{
+        text-align: center;
+      }
       .logo{
         width: 400px;
-        position: absolute;
         margin-top: -50px;
-        margin-left: 20px;
       }
       .objImg{
         width: 100px;
-        position: absolute;
         margin-top: 5px;
         margin-left: 25px;
       }
@@ -327,7 +327,6 @@
       <div id="headerTitle">HOLEPUNCH 3D</div>
       <div
         class="headerElement"
-        style="float: right; margin-right: 10px"
       >
         LEVEL
         <div
@@ -467,7 +466,7 @@
       window.cancelLoadingText = false
       var lDraw = () => {
         var l = ('.').repeat(3+((ct/3|0)%5))
-        el.innerHTML = `${l} loading ${l}`
+        el.innerHTML = `${l} LOADING ${l}`
         ct++
         if(!window.cancelLoadingText) requestAnimationFrame(lDraw)
       }
@@ -2145,29 +2144,25 @@
 <img
                          src="${hp3dLogo}"
                          class="logo"
-                         style="float: right"
+                         style=""
                         /> 
   
-              <span
-                style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >LEVEL ${level}</span>              <span
-                style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >OBJECTIVE</span>
-              <span
-                style="color: #0f4; font-size: 1.5em;"
-              >
-              
-    PLACE BLACK HOLES TO ALTER
-    THE SHIP'S COURSE.
-    
-    FLY IT INTO THE TARGET <div class="specialArrow">&#10136;</div><img
-                         src="${targetImgURL}"
-                         class="objImg"
-                         style="float: right"
-                        /></span>
-              
-              
-              
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+style="color: #0f4; font-size: 1.5em;"
+><div style="text-align: left; margin-left: 50px">
+PLACE BLACK HOLES TO ALTER
+THE SHIP'S COURSE.
+FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
+                     src="${targetImgURL}"
+                     class="objImg"
+                     style="float: right;"
+                    /></div></span>
+<div style="text-align: left;">
 
             SPACE   :  launch ship
             ARROWS  :  rotate view
@@ -2175,7 +2170,7 @@
                  H  :  toggle HUD (in ship-camera mode)
                  C  :  reset camera to default
                ESC  :  close this window
-`
+</div>`
           break
           
 
@@ -2199,40 +2194,32 @@
 <img
                          src="${hp3dLogo}"
                          class="logo"
-                         style="float: right"
+                         style=""
                         /> 
   
-              <span
-                style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >LEVEL ${level}</span>              <span
-                style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >OBJECTIVE</span>
-              <span
-                style="color: #0f4; font-size: 1.5em;"
-              >              
-    THE TARGET HAS MOVED!
-    USE THE ARROW KEYS TO ROTATE THE VIEW
-
-                <img
-                         src="${arrowKeys}"
-                         class="objImg"
-                         style="float: right"
-                        /></span>
-              
-              
-
-
-
-              
-              
-
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;"
+>              
+THE TARGET HAS MOVED!
+USE THE ARROW KEYS TO ROTATE THE VIEW
+<img
+ src="${arrowKeys}"
+ class="objImg"
+ style="width: 150px;"
+/></span>
+<div style="text-align: left;margin-top: -10px;">
                 SPACE   :  launch ship
                 ARROWS  :  rotate view
                      O  :  ship-cam view
                      H  :  toggle HUD (in ship-camera mode)
                      C  :  reset camera to default
                    ESC  :  close this window
-`
+</div>`
 
           break
 
@@ -2254,7 +2241,7 @@
                 size: ls/5,
               }
             )
-            var sd = 16
+            var sd = 0
             for(var i = 0; i < sd; i++){
               planets.push(
                 {
@@ -2279,22 +2266,22 @@
 <img
                          src="${hp3dLogo}"
                          class="logo"
-                         style="float: right"
+                         style=""
                         /> 
   
-              <span
-                style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >LEVEL ${level}</span>              <span
-                style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
-              >OBJECTIVE</span>
-              <span
-                style="color: #0f4; font-size: 1.5em;">    AVOID THE OBSTACLE!
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;">AVOID THE OBSTACLE!
 
-                <img
-                         src="${obstacleImg}"
-                         class="objImg"
-                         style="width:443px;margin-top:-15px;margin-left:-146px;"
-                        /></span>
+<img
+           src="${obstacleImg}"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          /></span>
 `
 
           break
