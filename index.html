@@ -681,11 +681,11 @@
         } },
         { uniform: {
           type: 'refraction',
-          angleOfRefraction: -.5,
+          angleOfRefraction: -.2,
           map: showBackground ? refTexture : '',
           enabled: true,
           playbackSpeed,
-          value: .4
+          value: .1
         } },
       ]
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -978,8 +978,8 @@
       
       var baseObstacleVerts
       var baseObstacleNormalVecs
-      var cl = 1
-      var rw = 1
+      var cl = 2
+      var rw = 2
       var br = 1
       var sp = 200
       var pointArray = []
@@ -990,13 +990,15 @@
         pointArray.push([x,y,z])
       })
       var geoOptions = {
-        shapeType: 'obj',
-        url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
+        shapeType: 'dodecahedron',
+        //url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
         //size: 110,
+        subs: 1,
         averageNormals: true,
         scaleX: 40,
         scaleY: 40,
         scaleZ: 40,
+        sphereize: -1,
         equirectangular: false,
         name: 'obstacle',
         playbackSpeed: 1,
@@ -1698,7 +1700,7 @@
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
-        muted = false
+        muted = true
         predictiveLength = 200
         modalVisible = false
         showHUD = true
@@ -2970,58 +2972,79 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
               if(obstacles.length){
                 var collision = false
                 var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
-                for(var i = 0; i < shape.vertices.length; i += 9){
-                  for(var j = 3; j--;){
-                    x = baseObstacleVerts[i+0+j*3]
-                    y = baseObstacleVerts[i+1+j*3]
-                    z = baseObstacleVerts[i+2+j*3]
+                
+                shape.shapeData.map((subShape, sIdx) => {
+                  
+                })
+                
+                
+                for(var j = 0; j < shape.shapeData.length; j++){
+                  var ox = shape.shapeData[j].ox
+                  var oy = shape.shapeData[j].oy
+                  var oz = shape.shapeData[j].oz
+                  for(var i = 0; i < baseObstacleVerts.length; i+=3){
+                    x = baseObstacleVerts[i+0]
+                    y = baseObstacleVerts[i+1]
+                    z = baseObstacleVerts[i+2]
                     p = Math.atan2(y,z) + t
                     d = Math.hypot(y,z)
                     y = S(p) * d
                     z = C(p) * d
-                    p = Math.atan2(x,z) + tht
-                    d = Math.hypot(x,z)
+                    p = Math.atan2(x, y) + tht
+                    d = Math.hypot(x, y)
                     x = S(p) * d
-                    z = C(p) * d
-                    shape.vertices[i+0+j*3] = x
-                    shape.vertices[i+1+j*3] = y
-                    shape.vertices[i+2+j*3] = z
-                    x = baseObstacleNormalVecs[i+0+j*3]
-                    y = baseObstacleNormalVecs[i+1+j*3]
-                    z = baseObstacleNormalVecs[i+2+j*3]
+                    y = C(p) * d
+                    shape.vertices[i+j*shape.stride+0]=x+ox
+                    shape.vertices[i+j*shape.stride+1]=y+oy
+                    shape.vertices[i+j*shape.stride+2]=z+oz
+
+                    x = baseObstacleNormalVecs[i+0]
+                    y = baseObstacleNormalVecs[i+1]
+                    z = baseObstacleNormalVecs[i+2]
                     p = Math.atan2(y,z) + t
                     d = Math.hypot(y,z)
                     y = S(p) * d
                     z = C(p) * d
-                    p = Math.atan2(x,z) + tht
-                    d = Math.hypot(x,z)
+                    p = Math.atan2(x, y) + tht
+                    d = Math.hypot(x, y)
                     x = S(p) * d
-                    z = C(p) * d
-                    shape.normalVecs[i+0+j*3] = x
-                    shape.normalVecs[i+1+j*3] = y
-                    shape.normalVecs[i+2+j*3] = z
+                    y = C(p) * d
+                    shape.normalVecs[i+j*shape.stride+0]=x
+                    shape.normalVecs[i+j*shape.stride+1]=y
+                    shape.normalVecs[i+j*shape.stride+2]=z
                   }
-                  var x1 = shape.vertices[i+0]
-                  var y1 = shape.vertices[i+1]
-                  var z1 = shape.vertices[i+2]
-                  var x2 = shape.vertices[i+3]
-                  var y2 = shape.vertices[i+4]
-                  var z2 = shape.vertices[i+5]
-                  var x3 = shape.vertices[i+6]
-                  var y3 = shape.vertices[i+7]
-                  var z3 = shape.vertices[i+8]
-                  var xa = ship.x
-                  var ya = ship.y
-                  var za = ship.z
-                  var xb = xa + ship.vx * 5
-                  var yb = ya + ship.vy * 5
-                  var zb = za + ship.vz * 5
-                  var ar
-                  if(ar=Coordinates.PointInPoly3D(xa,ya,za,xb,yb,zb,[
-                    [x1,y1,z1],
-                    [x2,y2,z2],
-                    [x3,y3,z3],
-                  ])) collision = true
+                  for(var i = 0; i < baseObstacleVerts.length; i+=9){
+                    var idx = i + j * shape.stride
+                    var x1 = shape.vertices[idx+0]
+                    var y1 = shape.vertices[idx+1]
+                    var z1 = shape.vertices[idx+2]
+                    var x2 = shape.vertices[idx+3]
+                    var y2 = shape.vertices[idx+4]
+                    var z2 = shape.vertices[idx+5]
+                    var x3 = shape.vertices[idx+6]
+                    var y3 = shape.vertices[idx+7]
+                    var z3 = shape.vertices[idx+8]
+                    var ax = (x1+x2+x3) / 3
+                    var ay = (y1+y2+y3) / 3
+                    var az = (z1+z2+z3) / 3
+                    if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z))<100){
+                      var poly = [
+                        [x1,y1,z1],
+                        [x2,y2,z2],
+                        [x3,y3,z3],
+                      ]
+                      var ar
+                      if(ar=Coordinates.PointInPoly3D(ship.x,
+                                              ship.y,
+                                              ship.z,
+                                              ship.x+ship.vx*5,
+                                              ship.y+ship.vy*5,
+                                              ship.z+ship.vz*5,
+                                              poly)){
+                        collision = true
+                      }
+                    }
+                  }
                 }
                 if(collision && alive && launched){
                   SpawnSplosion(ship.x, ship.y, ship.z)
