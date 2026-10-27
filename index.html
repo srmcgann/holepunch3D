@@ -496,7 +496,9 @@
       
       //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/brutalism1.jpg'
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
-      var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/quickgrid.png'
+      
+      //var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/quickgrid.png'
+      var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/6.jpg'
       var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
       var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
       var arrowKeys = 'https://srmcgann.github.io/holepunch3D/arrowKeys.png'
@@ -689,6 +691,54 @@
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
 
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .1
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .05
+        } },
+        { uniform: {
+          type: 'refraction',
+          angleOfRefraction: -.5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .5
+        } },
+      ]
+      var obstaclesShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .05
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          enabled: true,
+          value: .025
+        } },
+        { uniform: {
+          type: 'refraction2',
+          angleOfRefraction: -1,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .75
+        } },
+      ]
+      var mazeShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
       var colors = []
       var len = 2564*3 * 3
       Array(len).fill().map((v, i) => {
@@ -753,7 +803,7 @@
       var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .25}},
+        {lighting: {type: 'ambientLight', value: 1}},
         { uniform: {
           type: 'phong',
           value: 0
@@ -939,10 +989,11 @@
       })
       
       var baseMazeVerts
+      var baseMazeNormalVecs
       var cl = 1
-      var rw = 3
+      var rw = 1
       var br = 1
-      var sp = 200
+      var sp = 100
       var pointArray = []
       Array(br*cl*rw).fill().map((v, i) => {
         x = ((i%cl)-cl/2+.5)*sp
@@ -952,37 +1003,41 @@
       })
       var geoOptions = {
         shapeType: 'obj',
-        url: 'https://srmcgann.github.io/holepunch3D/maze1.obj',
-        map: 'https://srmcgann.github.io/holepunch3D/maze1.png',
+        url: 'https://srmcgann.github.io/holepunch3D/maze2.obj',
+        //map: 'https://srmcgann.github.io/holepunch3D/maze2.png',
         //map: 'https://srmcgann.github.io/Coordinates/resources/earth_with_clouds_animated_lowres.mp4',
         //equirectangular: false,
         name: 'maze',
         //sphereize: 1,
         //subs: 2,
-        scaleX: 100,
-        scaleY: 100,
-        scaleZ: 100,
+        alpha: .9,
+        disableDepthTest: true,
+        scaleX: 33,
+        scaleY: 33,
+        scaleZ: 33,
         //averageNormals: true,
         playbackSpeed: 1,
+        color: 0x4400ff,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
           shapes.push(res)
-          await shader.ConnectGeometry(res)
+          await mazeShader.ConnectGeometry(res)
         })
       })
       
       var baseObstacleVerts
       var baseObstacleNormalVecs
-      var cl = 2
+      var cl = 3
       var rw = 4
       var br = 7
       var sp = 72
       var pointArray = []
       Array(br*cl*rw).fill().map((v, i) => {
-        x = ((i%cl)-cl/2+.5)*sp*2
+        x = ((i%cl)-cl/2+.5)*sp
         y = (((i/cl|0)%rw)-rw/2+.5)*sp
         z = ((i/cl/rw|0)-br/2+.5)*sp / 2
         if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
@@ -991,19 +1046,19 @@
         shapeType: 'cube',
         //url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
         //size: 110,
-        subs: -1,
-        //averageNormals: true,
+        subs: 0,
+        averageNormals: true,
         scaleX: 32*2,
         scaleY: 4,
         scaleZ: 32/1.25,
-        //disableDepthTest: true,
-        //alpha: .9,
+        disableDepthTest: true,
+        alpha: .9,
         sphereize: 0,
         equirectangular: false,
         name: 'obstacle',
         playbackSpeed: 1,
-        color: 0x4400ff,
-        colorMix: .2,
+        color: 0xff8800,
+        colorMix: .5,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         /*
@@ -1024,7 +1079,7 @@
         baseObstacleNormalVecs = structuredClone(geometry.normalVecs)
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
           shapes.push(res)
-          await shader.ConnectGeometry(res)
+          await obstaclesShader.ConnectGeometry(res)
         })
       })
       
@@ -1048,7 +1103,7 @@
         color: 0xffffff,
         colorMix: 0,
       }
-      if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
         await cubeGridShader.ConnectGeometry(geometry)
       })  
@@ -1730,11 +1785,11 @@
       var levelComplete
       
       const Init = () => {
-        level = 4
+        level = 5
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
-        muted = true
+        muted = false
         predictiveLength = 200
         modalVisible = false
         showHUD = true
@@ -1929,7 +1984,9 @@
                 Undo()
               }
             }
-            if(e.keyCode == 72) showHUD = !showHUD
+            if(e.keyCode == 72) {
+              showHUD = !showHUD
+            }
             if(e.keyCode == 32) {
               if(levelComplete){
                 level++
@@ -1938,10 +1995,8 @@
                 if(alive){
                   if(!launched && !modalVisible){
                     if(shipView) {
-                      SetShipView(false)
-                      setTimeOut(()=>{
-                        SetShipView(true)
-                      },0)
+                      //SetShipView(false)
+                      SetShipView(true)
                     }
                     Launch()
                   }else{
@@ -3003,6 +3058,111 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             break
             case 'maze':
               if(mazes.length){
+                var collision = false
+                var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
+                for(var j = 0; j < shape.shapeData.length; j++){
+                  var ox = shape.shapeData[j].ox
+                  var oy = shape.shapeData[j].oy
+                  var oz = shape.shapeData[j].oz
+                  if(0) for(var i = 0; i < baseMazeVerts.length; i+=3){
+                    x = baseMazeVerts[i+0]
+                    y = baseMazeVerts[i+1]
+                    z = baseMazeVerts[i+2]
+                    p = Math.atan2(y,z) //+ t
+                    d = Math.hypot(y,z)
+                    y = S(p) * d
+                    z = C(p) * d
+                    p = Math.atan2(x, y) + tht
+                    d = Math.hypot(x, y)
+                    x = S(p) * d
+                    y = C(p) * d
+                    shape.vertices[i+j*shape.stride+0]=x+ox
+                    shape.vertices[i+j*shape.stride+1]=y+oy
+                    shape.vertices[i+j*shape.stride+2]=z+oz
+
+                    x = baseMazeNormalVecs[i+0]
+                    y = baseMazeNormalVecs[i+1]
+                    z = baseMazeNormalVecs[i+2]
+                    p = Math.atan2(y,z) //+ t
+                    d = Math.hypot(y,z)
+                    y = S(p) * d
+                    z = C(p) * d
+                    p = Math.atan2(x, y) + tht
+                    d = Math.hypot(x, y)
+                    x = S(p) * d
+                    y = C(p) * d
+                    shape.normalVecs[i+j*shape.stride+0]=x
+                    shape.normalVecs[i+j*shape.stride+1]=y
+                    shape.normalVecs[i+j*shape.stride+2]=z
+                  }
+                  for(var i = 0; i < baseMazeVerts.length; i+=9){
+                    var idx = i + j * shape.stride
+                    var x1 = shape.vertices[idx+0]
+                    var y1 = shape.vertices[idx+1]
+                    var z1 = shape.vertices[idx+2]
+                    p = Math.atan2(y1,z1) + shape.pitch
+                    d = Math.hypot(y1,z1)
+                    y1 = S(p) * d
+                    z1 = C(p) * d
+                    p = Math.atan2(x1, z1) + shape.yaw
+                    d = Math.hypot(x1, z1)
+                    x1 = S(p) * d
+                    z1 = C(p) * d
+
+                    var x2 = shape.vertices[idx+3]
+                    var y2 = shape.vertices[idx+4]
+                    var z2 = shape.vertices[idx+5]
+                    p = Math.atan2(y2,z2) + shape.pitch
+                    d = Math.hypot(y2,z2)
+                    y2 = S(p) * d
+                    z2 = C(p) * d
+                    p = Math.atan2(x2, z2) + shape.yaw
+                    d = Math.hypot(x2, z2)
+                    x2 = S(p) * d
+                    z2 = C(p) * d
+
+                    var x3 = shape.vertices[idx+6]
+                    var y3 = shape.vertices[idx+7]
+                    var z3 = shape.vertices[idx+8]
+                    p = Math.atan2(y3,z3) + shape.pitch
+                    d = Math.hypot(y3,z3)
+                    y3 = S(p) * d
+                    z3 = C(p) * d
+                    p = Math.atan2(x3, z3) + shape.yaw
+                    d = Math.hypot(x3, z3)
+                    x3 = S(p) * d
+                    z3 = C(p) * d
+                    
+                    var ax = (x1+x2+x3) / 3
+                    var ay = (y1+y2+y3) / 3
+                    var az = (z1+z2+z3) / 3
+                    if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z))<50){
+                      var poly = [
+                        [x1,y1,z1],
+                        [x2,y2,z2],
+                        [x3,y3,z3],
+                      ]
+                      var ar
+                      if(ar=Coordinates.PointInPoly3D(ship.x,
+                                              ship.y,
+                                              ship.z,
+                                              ship.x+ship.vx*1,
+                                              ship.y+ship.vy*1,
+                                              ship.z+ship.vz*1,
+                                              poly)){
+                        collision = true
+                      }
+                    }
+                  }
+                }
+                if(collision && alive && launched){
+                  SpawnSplosion(ship.x, ship.y, ship.z)
+                  alive = false
+                  engines.pause()
+                  engines.currentTime = 0
+                }
+                shape.pitch = S(t/3)/8
+                shape.yaw = C(t/3)/8
                 renderer.Draw(shape)
               }
             break
@@ -3086,7 +3246,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                     var ax = (x1+x2+x3) / 3
                     var ay = (y1+y2+y3) / 3
                     var az = (z1+z2+z3) / 3
-                    if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z))<100){
+                    if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z))<50){
                       var poly = [
                         [x1,y1,z1],
                         [x2,y2,z2],
@@ -3096,8 +3256,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                       if(ar=Coordinates.PointInPoly3D(ship.x,
                                               ship.y,
                                               ship.z,
-                                              ship.x+ship.vx*5,
-                                              ship.y+ship.vy*5+.001,
+                                              ship.x+ship.vx*5+.1,
+                                              ship.y+ship.vy*5-.1,
                                               ship.z+ship.vz*5,
                                               poly)){
                         collision = true
@@ -3111,7 +3271,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   engines.pause()
                   engines.currentTime = 0
                 }
-                shape.pitch = t/20
+                shape.pitch = t/10
+                shape.yaw = C(t)/4
                 renderer.Draw(shape)
               }
             break
@@ -3532,19 +3693,20 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   }
                 })
                 var mind = 6e6
-                mazes.map((maze, pIdx) => {
+                /*mazes.map((maze, pIdx) => {
                   x = maze.x
                   y = maze.y
                   z = maze.z
                   d = Math.hypot(x-ship.x, y-ship.y, z-ship.z)
                   if(d < mind) mind = d
                   if(d < maze.size*4.25){
+                    console.log('hm!')
                     SpawnSplosion(ship.x, ship.y, ship.z)
                     alive = false
                     engines.pause()
                     engines.currentTime = 0
                   }
-                })
+                })*/
                 if(alive){
                   for(var i = 0; i < shipSteps; i++){
                     if(launched){
