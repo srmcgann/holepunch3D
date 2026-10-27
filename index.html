@@ -494,11 +494,11 @@
       var w = c.width = renderer.c.width
       var h = c.height = renderer.c.height
       
-      //var refTexture = 'https://srmcgann.github.io/skyboxes3/HDRI/brutalism1.jpg'
       //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
       
-      //var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/quickgrid.png'
-      var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/6.jpg'
+      var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/quickgrid.png'
+      //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/6.jpg'
+      
       var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
       var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
       var arrowKeys = 'https://srmcgann.github.io/holepunch3D/arrowKeys.png'
@@ -715,10 +715,10 @@
       var obstaclesShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .1}},
+        {lighting: {type: 'ambientLight', value: .5}},
         { uniform: {
           type: 'phong',
-          value: .05
+          value: .02
         } },
         { uniform: {
           type: 'reflection',
@@ -729,11 +729,11 @@
         } },
         { uniform: {
           type: 'refraction2',
-          angleOfRefraction: -1,
+          angleOfRefraction: 1,
           map: showBackground ? refTexture : '',
           enabled: true,
           playbackSpeed,
-          value: .75
+          value: 1.5
         } },
       ]
       var mazeShader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -803,7 +803,7 @@
       var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: 1}},
+        {lighting: {type: 'ambientLight', value: .33}},
         { uniform: {
           type: 'phong',
           value: 0
@@ -1010,8 +1010,10 @@
         name: 'maze',
         //sphereize: 1,
         //subs: 2,
-        alpha: .9,
-        disableDepthTest: true,
+        
+        //alpha: .9,
+        //disableDepthTest: true,
+        
         scaleX: 33,
         scaleY: 33,
         scaleZ: 33,
@@ -1277,6 +1279,7 @@
         shapeType: 'lines',
         name: 'lines',
         geometryData,
+        disableDepthTest: true,
         alpha: .66,
         penumbra: 0,
         size: 20,
@@ -1760,7 +1763,7 @@
           break
         }
       }
-    
+
       const SetShipView = state => {
         shipView = state
         if(shipView && renderer.cameraMode != 'fps'){
@@ -2972,14 +2975,14 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
           Coordinates.Overlay.ctx.globalAlpha = 1
         }
         if(levelComplete){
-          screenAlpha += .01
-          screenAlpha = Math.min(.75, screenAlpha)
+          screenAlpha += .033
+          screenAlpha = Math.min(.975, screenAlpha)
           Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
           Coordinates.Overlay.ctx.drawImage(victoryScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
         }else{
           if(!alive){
-            screenAlpha += .01
-            screenAlpha = Math.min(.75, screenAlpha)
+            screenAlpha += .033
+            screenAlpha = Math.min(.975, screenAlpha)
             Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
             Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
           }
@@ -3136,7 +3139,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                     var ax = (x1+x2+x3) / 3
                     var ay = (y1+y2+y3) / 3
                     var az = (z1+z2+z3) / 3
-                    if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z))<50){
+                    if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 50){
                       var poly = [
                         [x1,y1,z1],
                         [x2,y2,z2],
@@ -3146,9 +3149,9 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                       if(ar=Coordinates.PointInPoly3D(ship.x,
                                               ship.y,
                                               ship.z,
-                                              ship.x+ship.vx*1,
-                                              ship.y+ship.vy*1,
-                                              ship.z+ship.vz*1,
+                                              ship.x+ship.vx*5,
+                                              ship.y+ship.vy*5,
+                                              ship.z+ship.vz*5,
                                               poly)){
                         collision = true
                       }
@@ -3570,7 +3573,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                             colors[idx2 + 0] = 1
                             colors[idx2 + 1] = 1
                             colors[idx2 + 2] = 1
-                            colors[idx2 + 3] = .75
+                            colors[idx2 + 3] = .25
                           }
                         }
                       }else{
@@ -3592,7 +3595,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                               colors[idx3 + 0] = 1
                               colors[idx3 + 1] = 0
                               colors[idx3 + 2] = 0
-                              colors[idx3 + 3] = .5
+                              colors[idx3 + 3] = .25
                             }
                             var x1 = flightpath[idx2].x1
                             var y1 = flightpath[idx2].y1
@@ -3693,20 +3696,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   }
                 })
                 var mind = 6e6
-                /*mazes.map((maze, pIdx) => {
-                  x = maze.x
-                  y = maze.y
-                  z = maze.z
-                  d = Math.hypot(x-ship.x, y-ship.y, z-ship.z)
-                  if(d < mind) mind = d
-                  if(d < maze.size*4.25){
-                    console.log('hm!')
-                    SpawnSplosion(ship.x, ship.y, ship.z)
-                    alive = false
-                    engines.pause()
-                    engines.currentTime = 0
-                  }
-                })*/
                 if(alive){
                   for(var i = 0; i < shipSteps; i++){
                     if(launched){
