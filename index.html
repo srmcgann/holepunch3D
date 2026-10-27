@@ -725,15 +725,15 @@
           map: showBackground ? refTexture : '',
           playbackSpeed,
           enabled: true,
-          value: .025
+          value: .2
         } },
         { uniform: {
           type: 'refraction2',
-          angleOfRefraction: 1,
+          angleOfRefraction: .5,
           map: showBackground ? refTexture : '',
           enabled: true,
           playbackSpeed,
-          value: 1.5
+          value: 1
         } },
       ]
       var mazeShader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -1004,7 +1004,7 @@
       var geoOptions = {
         shapeType: 'obj',
         url: 'https://srmcgann.github.io/holepunch3D/maze2.obj',
-        //map: 'https://srmcgann.github.io/holepunch3D/maze2.png',
+        map: 'https://srmcgann.github.io/holepunch3D/maze2.png',
         //map: 'https://srmcgann.github.io/Coordinates/resources/earth_with_clouds_animated_lowres.mp4',
         //equirectangular: false,
         name: 'maze',
@@ -1788,7 +1788,7 @@
       var levelComplete
       
       const Init = () => {
-        level = 5
+        level = 1
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
