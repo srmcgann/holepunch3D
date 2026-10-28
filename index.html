@@ -1705,15 +1705,16 @@
              Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
           //if(!shipView) UnloadFPS()
           if(!launched){
-            missile.pause()
-            missile.currentTime = 0
-            if(!muted) missile.play()
-            engines.pause()
-            engines.currentTime = 0
-            if(!muted) engines.play()
+            if(ship.vx||ship.vy||ship.vz){
+              missile.pause()
+              missile.currentTime = 0
+              if(!muted) missile.play()
+              engines.pause()
+              engines.currentTime = 0
+              if(!muted) engines.play()
+            }
             launched = true
             ranOnce = true
-            flightpath = []
             document.querySelector('#launchButton').style.background='#800'
             document.querySelector('#launchButton').style.color='#f88'
             document.querySelector('#launchButton').innerHTML = 'ABORT'
@@ -1870,8 +1871,8 @@
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
-        muted = false
-        predictiveLength = 200
+        muted = true
+        predictiveLength = 500
         modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
@@ -2122,7 +2123,8 @@
               }
             }
             if(e.keyCode == 13) {
-              if(!addingMass && !launched && alive && !levelComplete)
+              if(!addingMass && !launched &&
+                 alive && !levelComplete && !modalVisible)
                     SpawnBlackHole()
             }
           }
@@ -2142,7 +2144,7 @@
                   targYaw -= Math.PI / 2
                   targPitch = 0
                 break
-                case '-X':
+                case '-X':  
                   targYaw -= Math.PI / 2
                   targPitch = 0
                 break
@@ -2353,6 +2355,7 @@
         })
         AllSoundsOff()
 
+        flightpath = []
         smoke = []
         particles = []
         window.hovering = false
@@ -2379,7 +2382,6 @@
         
         renderer.useKeys = false
         alive = true
-        launched = false
         addingMass = false
         levelComplete = false
         spinTheta = 0
@@ -2399,6 +2401,7 @@
             initShipZ = 0
             levelMazeIdx = -1
             massAvailable = 100
+            launched = false
             
             initShipVx = 1
             initShipVy = 0
@@ -2450,6 +2453,7 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
             initShipZ = 0
             levelMazeIdx = -1
             massAvailable = 100
+            launched = false
             
             initShipVx = 1
             initShipVy = 0
@@ -2525,6 +2529,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipY = 0
             initShipZ = 0
             massAvailable = 100
+            launched = false
             
             initShipVx = 1
             initShipVy = 0
@@ -2559,7 +2564,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 //         LEVEL 4          //
 //////////////////////////////
           case 4:
-            levelName =  `${level} - timing is everything`
+            levelName =  `${level} - TIMING IS EVERYTHING`
             stage = 0
             SpawnTarget(200, 0, 0)
             
@@ -2575,6 +2580,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipY = 0
             initShipZ = 0
             massAvailable = 0
+            launched = false
             
             initShipVx = 1
             initShipVy = 0
@@ -2594,10 +2600,9 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
   style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
 >OBJECTIVE</span>-->
 <span
-  style="color: #0f4; font-size: 1.5em;">AVOID THE OBSTACLE!
-
+  style="color: #0f4; font-size: 1.5em;">DON'T GET BLOCKED<br>TIMING MATTERS!
 <img
-           src="${obstacleImg}"
+           src="https://srmcgann.github.io/holepunch3D/level4.png"
            class="objImg"
            style="width:443px;margin-top:-15px;"
           /></span>
@@ -2621,6 +2626,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipY = 0
             initShipZ = 0
             massAvailable = 100
+            launched = false
             
             initShipVx = 1
             initShipVy = 0
@@ -2667,6 +2673,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipY = 0
             initShipZ = 0
             massAvailable = 100
+            launched = false
             
             initShipVx = 1
             initShipVy = 0
@@ -2696,6 +2703,54 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 `
 
           break
+
+//////////////////////////////
+//         LEVEL 7          //
+//////////////////////////////
+          case 7:
+            levelName = `${level} - USE GRAVITY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            obstacles = []
+            //levelMazeIdx = 1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            massAvailable = 100
+            launched = false
+            
+            initShipVx = .000001
+            initShipVy = 0
+            initShipVz = 0
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;">YOUR THRUSTERS ARE OFFLINE<br>YOU MUST USE GRAVITY FOR PROPULSION
+
+<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          /></span>
+`
+
+          break
+
           }
         if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
           RestoreCam()
@@ -3833,7 +3888,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                           for(var n=0; n<4; n++){
                             var x1 = S(p=Math.PI*2/2*n+Math.PI/2+shape.roll) * 8
                             var y1 = C(p) * 8
-                            var z1 = -6
+                            var z1 = -4
                             p = Math.atan2(y1,z1) + p2
                             d = Math.hypot(y1,z1)
                             y1 = S(p) * d
@@ -3877,7 +3932,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                     }
                   }
                 }
-                if(!levelComplete) shape.roll += .02 * (launched ? 16 : 0)
+                if(!levelComplete) shape.roll += .02 * (launched ? (.025 + Math.hypot(ship.vx,ship.vy,ship.vz))*12 : 0)
                 renderer.Draw(shape)
               }
             break
