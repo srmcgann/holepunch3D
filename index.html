@@ -923,7 +923,7 @@
       var particlesShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
 
-      var iSmokec = 5e3
+      var iSmokec = 2e3
       var iSmokev = .075
       var particleColors = []
       Array(iSmokec).fill().map((v, i) => {
@@ -2051,6 +2051,7 @@
         window.onmousedown = e => {
           if(levelComplete){
             level++
+            flightpath = []
             LoadLevel(true)
           }else{
             if(!alive){
@@ -2140,6 +2141,7 @@
             if(e.keyCode == 32) {
               if(levelComplete){
                 level++
+                flightpath = []
                 LoadLevel(true)
               }else{
                 if(alive){
@@ -2363,7 +2365,11 @@
           case 4: // some levels have no blackholes
           break
           default:
-            massAvailable = 100
+            var total = 0
+            blackholes.map((bh, bIdx) => {
+              if(bh.x != 1e5) total+=bh.mass
+            })
+            massAvailable = 100 - total
           break
         }
       }
@@ -2443,7 +2449,7 @@
             initShipY = 0
             initShipZ = 0
             levelMazeIdx = -1
-            massAvailable = 100
+            //massAvailable = 100
             launched = false
             
             initShipVx = 1
@@ -2495,7 +2501,7 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
             initShipY = 0
             initShipZ = 0
             levelMazeIdx = -1
-            massAvailable = 100
+            //massAvailable = 100
             launched = false
             
             initShipVx = 1
@@ -2571,7 +2577,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
-            massAvailable = 100
+            //massAvailable = 100
             launched = false
             
             initShipVx = 1
@@ -2622,7 +2628,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
-            massAvailable = 0
+            //massAvailable = 0
             launched = false
             
             initShipVx = 1.75
@@ -2668,7 +2674,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
-            massAvailable = 100
+            //massAvailable = 100
             launched = false
             
             initShipVx = 1
@@ -2715,7 +2721,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
-            massAvailable = 100
+            //massAvailable = 100
             launched = false
             
             initShipVx = 1
@@ -2762,7 +2768,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
-            massAvailable = 100
+            //massAvailable = 100
             launched = false
             
             initShipVx = .000001
