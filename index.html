@@ -79,7 +79,7 @@
         display: none;
         overflow-y: auto;
         background: #2221;
-        box-shadow: 0 0 250px #fff3;
+        box-shadow: 0 0 250px #208f;
         border-left: 5px solid #4448;
         border-top: 5px solid #4448;
         border-right: 5px solid #0008;
@@ -840,7 +840,7 @@
         { uniform: {
           type: 'phong',
           value: 0,
-          theta: .5,
+          //theta: .5,
         } }
       ]
       var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -851,7 +851,7 @@
       })
       
       
-      var iLc = 1e3
+      var iLc = 2e3
       var colors = []
       Array(iLc).fill().map((v, i) => {
         var rgb   = Coordinates.HSVToRGB(360/iLc*i, 1, 1)
@@ -994,19 +994,19 @@
         pointArray.push([x,y,z])
       })
       var geoOptions = {
-        shapeType: 'obj',
-        url: 'https://srmcgann.github.io/holepunch3D/geosphere_uvs.obj?3',
+        shapeType: 'icosahedron',
+        //url: 'https://srmcgann.github.io/holepunch3D/geosphere_uvs.obj?3',
         map: 'https://srmcgann.github.io/Coordinates/resources/earth_with_clouds_animated_lowres.mp4',
         //equirectangular: false,
         name: 'planet',
-        //sphereize: 1,
-        //subs: 2,
-        scaleX: 4,
-        scaleY: 4,
-        scaleZ: 4,
-        //averageNormals: true,
+        sphereize: 1,
+        subs: 1,
+        //scaleX: 4,
+        //scaleY: 4,
+        //scaleZ: 4,
+        averageNormals: true,
         playbackSpeed: 1,
-        size: 5,
+        size: 4,
         colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -1107,13 +1107,13 @@
       var baseObstacleNormalVecs
       var cl = 3
       var rw = 4
-      var br = 7
+      var br = 4
       var sp = 72
       var pointArray = []
       Array(br*cl*rw).fill().map((v, i) => {
         x = ((i%cl)-cl/2+.5)*sp
         y = (((i/cl|0)%rw)-rw/2+.5)*sp
-        z = ((i/cl/rw|0)-br/2+.5)*sp / 2
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
         if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
       })
       var geoOptions = {
@@ -1125,7 +1125,7 @@
         averageNormals: true,
         scaleX: 32*2,
         scaleY: 4,
-        scaleZ: 32/1.25,
+        scaleZ: 32*2,
         disableDepthTest: true,
         alpha: .9,
         sphereize: 0,
@@ -1713,6 +1713,7 @@
               engines.currentTime = 0
               if(!muted) engines.play()
             }
+            flightpath = []
             launched = true
             ranOnce = true
             document.querySelector('#launchButton').style.background='#800'
@@ -1799,7 +1800,7 @@
       
       const RestoreCam = () => {
         switch(level){
-          case 4:
+          case -4:
             SetShipView(true)
             showHUD = false
             cursorDist = 100
@@ -1867,12 +1868,14 @@
       
       const Init = () => {
         level = 1
+        level = Math.max(1,level)
+        flightpath = []
         buttonTimerInterval = .25
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
         muted = true
-        predictiveLength = 500
+        predictiveLength = 400
         modalVisible = false
         showHUD = true
         keys = Array(128).fill(false)
@@ -1880,6 +1883,45 @@
         window.onkeyup = e => {
           if(e.keyCode == 13){
             if(addingMass){
+              PushHistory({
+                type: 'create hole',
+                val: bhIdx,
+                redoCommand: `
+                  bhIdx = ${bhIdx};
+                  blackholes[${bhIdx}].x = ${blackholes[bhIdx].x};
+                  blackholes[${bhIdx}].y = ${blackholes[bhIdx].y};
+                  blackholes[${bhIdx}].z = ${blackholes[bhIdx].z};
+                  blackholes[${bhIdx}].ox = ${blackholes[bhIdx].ox};
+                  blackholes[${bhIdx}].oy = ${blackholes[bhIdx].oy};
+                  blackholes[${bhIdx}].oz = ${blackholes[bhIdx].oz};
+                  //blackholes[${bhIdx}].tmx = ${blackholes[bhIdx].tmx};
+                  //blackholes[${bhIdx}].tmy = ${blackholes[bhIdx].tmy};
+                  //blackholes[${bhIdx}].tmz = ${blackholes[bhIdx].tmz};
+                  blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                  blackholes[${bhIdx}].hover = false;
+                  blackholes[${bhIdx}].dragging = false;
+                  blackholes[${bhIdx}].buttonHover = false;
+                  blackholes[${bhIdx}].buttonPress = false;
+                  massAvailable -= ${blackholes[bhIdx].mass};
+                  bhIdx = ${bhIdx+1}
+                `,
+                undoCommand: `
+                  bhIdx = ${bhIdx};
+                  blackholes[${bhIdx}].x = 1e5;
+                  blackholes[${bhIdx}].y = 1e5;
+                  blackholes[${bhIdx}].z = 1e5;
+                  blackholes[${bhIdx}].ox = 1e5;
+                  blackholes[${bhIdx}].oy = 1e5;
+                  blackholes[${bhIdx}].oz = 1e5;
+                  //blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                  blackholes[${bhIdx}].hover = false;
+                  blackholes[${bhIdx}].dragging = false;
+                  blackholes[${bhIdx}].buttonHover = false;
+                  blackholes[${bhIdx}].buttonPress = false;
+                  massAvailable += ${blackholes[bhIdx].mass};
+                  //bhIdx = ${bhIdx-1}
+                `,
+              })
               bhIdx++
               bhIdx%=iPc
               addingMass = false
@@ -1890,6 +1932,7 @@
         
         window.onmouseup = e => {
           blackholes.map(v=>v.button=false)
+
           if(addingMass){
             PushHistory({
               type: 'create hole',
@@ -2355,13 +2398,13 @@
         })
         AllSoundsOff()
 
-        flightpath = []
         smoke = []
         particles = []
         window.hovering = false
         holesModified = false
         if(initBlackHoles){
           bhIdx = 0
+          flightpath = []
           InitBlackHoles()
           ranOnce = false
         }
@@ -2499,12 +2542,12 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
           case 3:
             levelName =  `${level} - AVOID THE OBSTACLE`
             stage = 0
-            SpawnTarget(100, 0, 0)
+            SpawnTarget(200, 0, 0)
             
             planets = []
             obstacles= []
             levelMazeIdx = -1
-            var ls = 60
+            var ls = 120
             planets.push(
               {
                 x: 0,
@@ -2582,7 +2625,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             massAvailable = 0
             launched = false
             
-            initShipVx = 1
+            initShipVx = 1.75
             initShipVy = 0
             initShipVz = 0
 
@@ -2604,7 +2647,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 <img
            src="https://srmcgann.github.io/holepunch3D/level4.png"
            class="objImg"
-           style="width:443px;margin-top:-15px;"
+           style="width:443px;margin-top:15px;"
           /></span>
 `
 
@@ -3278,7 +3321,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             case 'obstacle':
               if(obstacles.length){
                 var collision = false
-                var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
+                var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t*1.75))*Math.PI*1.25))
                 for(var j = 0; j < shape.shapeData.length; j++){
                   var ox = shape.shapeData[j].ox
                   var oy = shape.shapeData[j].oy
@@ -3623,6 +3666,12 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   var collision = false
                   for(var j = 0; j < shape.vertices.length; j += 6){
                     if(j < 6*predictiveLength){
+                      shape.vertices[j+0] = 1e5
+                      shape.vertices[j+1] = 1e5
+                      shape.vertices[j+2] = 1e5
+                      shape.vertices[j+3] = 1e5
+                      shape.vertices[j+4] = 1e5
+                      shape.vertices[j+5] = 1e5
                       var idx = j
                       if(!collision){
                         var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
@@ -3634,12 +3683,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                         vz = ar.vz
                         if(ar.collision){
                           collision = true
-                          shape.vertices[idx+0] = 1e5
-                          shape.vertices[idx+1] = 1e5
-                          shape.vertices[idx+2] = 1e5
-                          shape.vertices[idx+3] = 1e5
-                          shape.vertices[idx+4] = 1e5
-                          shape.vertices[idx+5] = 1e5
                         }else{
                           var x2 = x1 + vx
                           var y2 = y1 + vy
@@ -3687,13 +3730,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                             colors[idx2 + 3] = .25
                           }
                         }
-                      }else{
-                        shape.vertices[idx+0] = 1e5
-                        shape.vertices[idx+1] = 1e5
-                        shape.vertices[idx+2] = 1e5
-                        shape.vertices[idx+3] = 1e5
-                        shape.vertices[idx+4] = 1e5
-                        shape.vertices[idx+5] = 1e5
                       }
                     }else{
                       idx = j
@@ -3729,13 +3765,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                           shape.vertices[idx+4] = 1e5
                           shape.vertices[idx+5] = 1e5
                         }
-                      }else{
-                        shape.vertices[idx+0] = 1e5
-                        shape.vertices[idx+1] = 1e5
-                        shape.vertices[idx+2] = 1e5
-                        shape.vertices[idx+3] = 1e5
-                        shape.vertices[idx+4] = 1e5
-                        shape.vertices[idx+5] = 1e5
                       }
                     }
                   }
@@ -4057,7 +4086,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   var ax = (x1+x2+x3) / 3
                   var ay = (y1+y2+y3) / 3
                   var az = (z1+z2+z3) / 3
-                  if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 25){
+                  if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 20){
                     var poly = [
                       [x1,y1,z1],
                       [x2,y2,z2],
@@ -4110,8 +4139,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 var bx = ar[0]
                 var by = ar[1]
                 var bz = ar[2]
-                var s = 100 * v.mass
-                var n = 1+v.mass/100
+                var s = 140 * v.mass
+                var n = 1+v.mass/140
                 if(!hoverTrigger &&
                   (d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
                     (v.hover && -y < 80*n && -y > -90*n &&
