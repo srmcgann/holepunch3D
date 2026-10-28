@@ -1865,7 +1865,7 @@
       var levelComplete, buttonTimerInterval
       
       const Init = () => {
-        level = 5
+        level = 6
         buttonTimerInterval = .25
         history = Array(1e3).fill('')
         historyPointer = 0
@@ -2640,7 +2640,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
   style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
 >OBJECTIVE</span>-->
 <span
-  style="color: #0f4; font-size: 1.5em;">AVOID THE OBSTACLE!
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THE PASSAGE
 
 <img
            src="https://srmcgann.github.io/holepunch3D/maze_example1.png"
@@ -2655,7 +2655,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 //         LEVEL 6          //
 //////////////////////////////
           case 6:
-            levelName = `${level} - navigate the barriers`
+            levelName = `${level} - navigate the passage`
             stage = 0
             SpawnTarget(200, 0, 0)
             
@@ -2686,10 +2686,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
   style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
 >OBJECTIVE</span>-->
 <span
-  style="color: #0f4; font-size: 1.5em;">AVOID THE OBSTACLE!
+  style="color: #0f4; font-size: 1.5em;">SOME PASSAGES ARE NOT DIRECT
 
 <img
-           src="${obstacleImg}"
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
            class="objImg"
            style="width:443px;margin-top:-15px;"
           /></span>
