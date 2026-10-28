@@ -715,7 +715,31 @@
       var obstaclesShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .5}},
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .1
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          enabled: true,
+          value: .2
+        } },
+        { uniform: {
+          type: 'refraction2',
+          angleOfRefraction: .5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .5
+        } },
+      ]
+      var mazeShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
         { uniform: {
           type: 'phong',
           value: .02
@@ -736,7 +760,7 @@
           value: 1
         } },
       ]
-      var mazeShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      var mazeShader2 = await Coordinates.BasicShader(renderer, shaderOptions)
 
 
       var colors = []
@@ -1012,8 +1036,8 @@
         map: 'https://srmcgann.github.io/holepunch3D/maze2.png',
         name: 'maze',
 
-        //alpha: .9,
-        //disableDepthTest: true,
+        alpha: .9,
+        disableDepthTest: true,
         //averageNormals: true,
         color: 0x4400ff,
         colorMix: 0,
@@ -1051,19 +1075,19 @@
       })
       var geoOptions = {
         shapeType: 'obj',
-        url: 'https://srmcgann.github.io/holepunch3D/maze3.obj',
-        map: 'https://srmcgann.github.io/holepunch3D/maze3.png',
+        url: 'https://srmcgann.github.io/holepunch3D/maze4.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/maze4.png',
         name: 'maze',
 
-        //alpha: .9,
-        //disableDepthTest: true,
+        alpha: .9,
+        disableDepthTest: true,
         //averageNormals: true,
         color: 0x4400ff,
         colorMix: 0,
         
-        scaleX: 50,
-        scaleY: 50,
-        scaleZ: 50,
+        scaleX: 90,
+        scaleY: 90,
+        scaleZ: 90,
         playbackSpeed: 1,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -1075,7 +1099,7 @@
             baseMazeVerts,
             baseMazeNormalVecs,
           }
-          await mazeShader.ConnectGeometry(res)
+          await mazeShader2.ConnectGeometry(res)
         })
       })
       
@@ -1094,9 +1118,10 @@
       })
       var geoOptions = {
         shapeType: 'cube',
+        map: 'https://srmcgann.github.io/Coordinates/resources/nebugrid_po2.jpg',
         //url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
         //size: 110,
-        subs: 0,
+        subs: -1,
         averageNormals: true,
         scaleX: 32*2,
         scaleY: 4,
@@ -1107,8 +1132,8 @@
         equirectangular: false,
         name: 'obstacle',
         playbackSpeed: 1,
-        color: 0xff8800,
-        colorMix: .5,
+        color: 0xff0000,
+        colorMix: .15,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         /*
@@ -1652,9 +1677,13 @@
             blackholes[bhIdx].x = cursor.x
             blackholes[bhIdx].y = cursor.y
             blackholes[bhIdx].z = cursor.z
+            blackholes[bhIdx].buttonTimer = renderer.frameCount/60+.25
             blackholes[bhIdx].mass = 10
             massAvailable -= 10
             holesModified = true
+            increase.pause()
+            increase.currentTime = 0
+            if(!muted) increase.play()
             //strum.pause()
             //strum.currentTime = 0
             //if(!muted) strum.play()
@@ -1771,11 +1800,11 @@
         switch(level){
           case 4:
             SetShipView(true)
-            showHUD = true
+            showHUD = false
             cursorDist = 100
             UnloadFPS()
             //LoadFPS()
-            targYaw = renderer.yaw = -Math.PI/2
+            targYaw = renderer.yaw = 0//-Math.PI/2
             targRoll = renderer.roll = 0
             targPitch = renderer.pitch = 0 //-Math.PI/2
             targX = renderer.x = 0
@@ -1833,10 +1862,11 @@
       var level, showHUD, modalVisible
       var cameras, predictiveLength, shipSteps
       var muted, history, historyPointer, historyTop
-      var levelComplete
+      var levelComplete, buttonTimerInterval
       
       const Init = () => {
-        level = 6
+        level = 5
+        buttonTimerInterval = .25
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
@@ -1858,6 +1888,7 @@
         }
         
         window.onmouseup = e => {
+          blackholes.map(v=>v.button=false)
           if(addingMass){
             PushHistory({
               type: 'create hole',
@@ -1988,6 +2019,30 @@
                     if(l[0].buttonHover){
                       l[0].buttonPress = l[0].buttonHover
                       l[0].om = l[0].mass
+                      l[0].button = true
+                      
+                      switch(l[0].buttonHover){
+                        case 1:
+                          if(l[0].mass>10){
+                            l[0].mass--
+                            massAvailable ++
+                            decrease.pause()
+                            decrease.currentTime = 0
+                            if(!muted) decrease.play()
+                          }
+                        break
+                        case 2:
+                          if(massAvailable>0){
+                            l[0].mass++
+                            massAvailable --
+                            increase.pause()
+                            increase.currentTime = 0
+                            if(!muted) increase.play()
+                          }
+                        break
+                      }
+                      
+                      
                     }else{
                       l[0].dragging = true
                       l[0].tmx = cursor.x
@@ -2222,7 +2277,6 @@
             type: 'init holes',
             val: bhIdx,
             redoCommand: `
-              massAvailable = 100
               holesModified = true
               blackholes = Array(iPc).fill().map((v, i) => {
                 x = 1e5
@@ -2233,6 +2287,8 @@
                          tmx: 0, tmy: 0, tmz: 0,
                          buttonPress: -1,
                          hover: false,
+                         buttonTimer: 0,
+                         button: false,
                          dragging: false,
                          buttonHover: false}
               })
@@ -2243,7 +2299,6 @@
             `,
           })
         }
-        massAvailable = 100
         holesModified = true
         blackholes = Array(iPc).fill().map((v, i) => {
           x = 1e5
@@ -2253,10 +2308,19 @@
                    ox: 0, oy: 0, oz: 0,
                    tmx: 0, tmy: 0, tmz: 0,
                    buttonPress: -1,
+                   buttonTimer: 0,
+                   button: false,
                    hover: false,
                    dragging: false,
                    buttonHover: false}
         })
+        switch(level){
+          case 4: // some levels have no blackholes
+          break
+          default:
+            massAvailable = 100
+          break
+        }
       }
       
       var levelName
@@ -2334,6 +2398,7 @@
             initShipY = 0
             initShipZ = 0
             levelMazeIdx = -1
+            massAvailable = 100
             
             initShipVx = 1
             initShipVy = 0
@@ -2384,6 +2449,7 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
             initShipY = 0
             initShipZ = 0
             levelMazeIdx = -1
+            massAvailable = 100
             
             initShipVx = 1
             initShipVy = 0
@@ -2458,6 +2524,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
+            massAvailable = 100
             
             initShipVx = 1
             initShipVy = 0
@@ -2492,7 +2559,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 //         LEVEL 4          //
 //////////////////////////////
           case 4:
-            levelName =  `${level} - navigate the barriers`
+            levelName =  `${level} - timing is everything`
             stage = 0
             SpawnTarget(200, 0, 0)
             
@@ -2507,6 +2574,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
+            massAvailable = 0
             
             initShipVx = 1
             initShipVy = 0
@@ -2541,7 +2609,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 //         LEVEL 5          //
 //////////////////////////////
           case 5:
-            levelName = 'navigate the barriers'
+            levelName = `${level} - some passeges are narrow`
             stage = 0
             SpawnTarget(200, 0, 0)
             
@@ -2552,6 +2620,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
+            massAvailable = 100
             
             initShipVx = 1
             initShipVy = 0
@@ -2586,7 +2655,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 //         LEVEL 6          //
 //////////////////////////////
           case 6:
-            levelName = 'navigate the barriers'
+            levelName = `${level} - navigate the barriers`
             stage = 0
             SpawnTarget(200, 0, 0)
             
@@ -2597,6 +2666,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipX = -200
             initShipY = 0
             initShipZ = 0
+            massAvailable = 100
             
             initShipVx = 1
             initShipVy = 0
@@ -3030,7 +3100,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
         renderer.yaw += ((targYaw + spinTheta) - renderer.yaw) / 3
         
         
-        levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%12)
+        levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%6)
         massEl.innerHTML =('▐').repeat(massAvailable/4)
         massNumericEl.innerHTML = Math.round(massAvailable)
         holeCountEl.innerHTML = blackholes.filter(v=>v.x != 1e5).length
@@ -3290,7 +3360,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             break
             case 'blackhole':
               if(addingMass && !launched && alive){
-                if(massAvailable > 0) {
+                if(massAvailable > 0 && blackholes[bhIdx].buttonTimer < t) {
                   increase.pause()
                   increase.currentTime = 0
                   if(!muted) increase.play()
@@ -3409,30 +3479,35 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                         holesModified = true
                         switch(bh.buttonPress){
                           case 1:
-                            if(bh.mass > 10){
-                              decrease.pause()
-                              decrease.currentTime = 0
-                              if(!muted) decrease.play()
-                              bh.mass--
-                              massAvailable ++
-                            }else{
-                              misclick.pause()
-                              misclick.currentTime = 0
-                              if(!muted) misclick.play()
+                            if(bh.buttonTimer < t){
+                              if(bh.mass > 10){
+                                decrease.pause()
+                                decrease.currentTime = 0
+                                if(!muted) decrease.play()
+                                bh.mass--
+                                massAvailable ++
+                              }else{
+                                bh.buttonTimer = t + buttonTimerInterval
+                                misclick.pause()
+                                misclick.currentTime = 0
+                                if(!muted) misclick.play()
+                              }
                             }
-                            
                           break
                           case 2:
-                            if(massAvailable > 0){
-                              increase.pause()
-                              increase.currentTime = 0
-                              if(!muted) increase.play()
-                              bh.mass++
-                              massAvailable --
-                            }else{
-                              misclick.pause()
-                              misclick.currentTime = 0
-                              if(!muted) misclick.play()
+                            if(bh.buttonTimer < t){
+                              if(massAvailable > 0){
+                                increase.pause()
+                                increase.currentTime = 0
+                                if(!muted) increase.play()
+                                bh.mass++
+                                massAvailable --
+                              }else{
+                                bh.buttonTimer = t + buttonTimerInterval
+                                misclick.pause()
+                                misclick.currentTime = 0
+                                if(!muted) misclick.play()
+                              }
                             }
                           break
                           case 3:
@@ -3927,7 +4002,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   var ax = (x1+x2+x3) / 3
                   var ay = (y1+y2+y3) / 3
                   var az = (z1+z2+z3) / 3
-                  if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 50){
+                  if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 25){
                     var poly = [
                       [x1,y1,z1],
                       [x2,y2,z2],
@@ -3986,6 +4061,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   (d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
                     (v.hover && -y < 80*n && -y > -90*n &&
                     x > -140 && x < 140)){
+                  if(!v.button) v.buttonTimer = t + buttonTimerInterval
+                  if(renderer.mouseButton == 1) v.button = true
                   hoverTrigger = v.hover = true
                   if(renderer.cameraMode == 'fps') renderer.useKeys = false
                   if(!buttonHover)
