@@ -1867,7 +1867,7 @@
       var levelComplete, buttonTimerInterval
       
       const Init = () => {
-        level = 1
+        level = 6
         level = Math.max(1,level)
         flightpath = []
         buttonTimerInterval = .25
@@ -2051,7 +2051,6 @@
         window.onmousedown = e => {
           if(levelComplete){
             level++
-            flightpath = []
             LoadLevel(true)
           }else{
             if(!alive){
@@ -2141,7 +2140,6 @@
             if(e.keyCode == 32) {
               if(levelComplete){
                 level++
-                flightpath = []
                 LoadLevel(true)
               }else{
                 if(alive){
@@ -2411,6 +2409,8 @@
         if(initBlackHoles){
           bhIdx = 0
           flightpath = []
+          var el = shapes.filter(v=>v.name=='lines')[0]
+          for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
           InitBlackHoles()
           ranOnce = false
         }
@@ -2763,6 +2763,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             
             planets = []
             obstacles = []
+            mazes = []
             //levelMazeIdx = 1
             
             initShipX = -200
