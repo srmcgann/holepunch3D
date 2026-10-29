@@ -1175,10 +1175,11 @@
         scaleX: 33,
         scaleY: 33,
         scaleZ: 33,
+        yaw: Math.PI/2,
 
         name: 'maze',
         color: 0x4400ff,
-        colorMix: .5,
+        colorMix: 0,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         baseMazeVerts = structuredClone(geometry.vertices)
@@ -1740,7 +1741,7 @@
              Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
           //if(!shipView) UnloadFPS()
           if(!launched){
-            if(ship.vx||ship.vy||ship.vz){
+            if(ship.hasThrusters){
               missile.pause()
               missile.currentTime = 0
               if(!muted) missile.play()
@@ -1900,6 +1901,7 @@
       var cameras, predictiveLength, shipSteps
       var muted, history, historyPointer, historyTop
       var levelComplete, buttonTimerInterval
+      var hasThrusters
       
       const Init = () => {
         level = 8
@@ -1909,7 +1911,7 @@
         history = Array(1e3).fill('')
         historyPointer = 0
         historyTop = 0
-        muted = true
+        muted = false
         predictiveLength = 400
         modalVisible = false
         showHUD = true
@@ -2488,6 +2490,7 @@
             //massAvailable = 100
             launched = false
             
+            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
@@ -2541,6 +2544,7 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
             //massAvailable = 100
             launched = false
             
+            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
@@ -2618,6 +2622,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
@@ -2665,6 +2670,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 0
             launched = false
             
+            hasThrusters = true
             initShipVx = 1.75
             initShipVy = 0
             initShipVz = 0
@@ -2711,6 +2717,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
@@ -2758,6 +2765,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
@@ -2805,6 +2813,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            hasThrusters = false
             initShipVx = .000001
             initShipVy = 0
             initShipVz = 0
@@ -2859,6 +2868,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            hasThrusters = false
             initShipVx = .000001
             initShipVy = 0
             initShipVz = 0
@@ -2906,6 +2916,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
           vx: initShipVx,
           vy: initShipVy,
           vz: initShipVz,
+          hasThrusters,
           vecx: 0,
           vecy: 0,
           vecz: 0,
@@ -2930,7 +2941,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
       LoadLevel(true)
       
       window.CloseModal = () => {
-        console.log('closing modal')
         var el = document.querySelector('#dialogueScreen')
         el.innerHTML = ''
         el.style.display = 'none'
@@ -3916,7 +3926,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                             d = Math.hypot(x1,z1)
                             x1 = S(p) * d
                             z1 = C(p) * d
-                            SpawnSmoke(
+                            if(ship.hasThrusters) SpawnSmoke(
                                x1 + ship.x - ship.vx/4*n - x,
                                y1 + ship.y - ship.vy/4*n - y,
                                z1 + ship.z - ship.vz/4*n - z )
@@ -3996,6 +4006,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
         obstacles.map((obstacle, oIdx) => {
           if(oIdx == levelObstacleIdx){
             var shape = obstacle.data.shape
+            switch(levelObstacleIdx){
+              default:
+              break
+            }
             var collision = false
             var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t*1.75))*Math.PI*1.25))
             for(var j = 0; j < shape.shapeData.length; j++){
@@ -4107,121 +4121,139 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
         
         
         //// mazes ////
-          mazes.map((maze, mIdx) => {
-            if(mIdx == levelMazeIdx){
-              var shape = maze.data.shape
-              var baseMazeVerts = maze.data.baseMazeVerts
-              var baseMazeNormalVecs = maze.data.baseMazeNormalVecs
-              var collision = false
-              var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
-              console.log(shape)
-              for(var j = 0; j < shape.shapeData.length; j++){
-                var ox = shape.shapeData[j].ox
-                var oy = shape.shapeData[j].oy
-                var oz = shape.shapeData[j].oz
-                if(0) for(var i = 0; i < baseMazeVerts.length; i+=3){
-                  x = baseMazeVerts[i+0]
-                  y = baseMazeVerts[i+1]
-                  z = baseMazeVerts[i+2]
-                  p = Math.atan2(y,z) //+ t
-                  d = Math.hypot(y,z)
-                  y = S(p) * d
-                  z = C(p) * d
-                  p = Math.atan2(x, y) + tht
-                  d = Math.hypot(x, y)
-                  x = S(p) * d
-                  y = C(p) * d
-                  shape.vertices[i+j*shape.stride+0]=x+ox
-                  shape.vertices[i+j*shape.stride+1]=y+oy
-                  shape.vertices[i+j*shape.stride+2]=z+oz
+        mazes.map((maze, mIdx) => {
+          if(mIdx == levelMazeIdx){
+            var shape = maze.data.shape
+            var baseMazeVerts = maze.data.baseMazeVerts
+            var baseMazeNormalVecs = maze.data.baseMazeNormalVecs
+            var collision = false
+            var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
+            switch(levelMazeIdx){
+              case 2:
+                var ds = shape.shader.datasets.filter(v=>v.iURL==shape.map)[0]
+                var ol = ds.optionalLighting
+                var oa = ds.optionalUniforms
+                var phong = oa.filter(v=>v.name=='phong')[0]
+                var reflection = oa.filter(v=>v.name=='reflection')[0]
+                var refraction2 = oa.filter(v=>v.name=='refraction2')[0]
+                var lighting = ol.filter(v=>v.name=='ambientLight')[0]
+                phong.value = .25
+                reflection.value = .1
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .33
+                shape.yaw = t/8
+              break
+              default:
+                shape.pitch = S(t/3)/8
+                shape.yaw = C(t/3)/8
+              break
+            }
+            for(var j = 0; j < shape.shapeData.length; j++){
+              var ox = shape.shapeData[j].ox
+              var oy = shape.shapeData[j].oy
+              var oz = shape.shapeData[j].oz
+              if(0) for(var i = 0; i < baseMazeVerts.length; i+=3){
+                x = baseMazeVerts[i+0]
+                y = baseMazeVerts[i+1]
+                z = baseMazeVerts[i+2]
+                p = Math.atan2(y,z) //+ t
+                d = Math.hypot(y,z)
+                y = S(p) * d
+                z = C(p) * d
+                p = Math.atan2(x, y) + tht
+                d = Math.hypot(x, y)
+                x = S(p) * d
+                y = C(p) * d
+                shape.vertices[i+j*shape.stride+0]=x+ox
+                shape.vertices[i+j*shape.stride+1]=y+oy
+                shape.vertices[i+j*shape.stride+2]=z+oz
 
-                  x = baseMazeNormalVecs[i+0]
-                  y = baseMazeNormalVecs[i+1]
-                  z = baseMazeNormalVecs[i+2]
-                  p = Math.atan2(y,z) //+ t
-                  d = Math.hypot(y,z)
-                  y = S(p) * d
-                  z = C(p) * d
-                  p = Math.atan2(x, y) + tht
-                  d = Math.hypot(x, y)
-                  x = S(p) * d
-                  y = C(p) * d
-                  shape.normalVecs[i+j*shape.stride+0]=x
-                  shape.normalVecs[i+j*shape.stride+1]=y
-                  shape.normalVecs[i+j*shape.stride+2]=z
-                }
-                for(var i = 0; i < baseMazeVerts.length; i+=9){
-                  var idx = i + j * shape.stride
-                  var x1 = shape.vertices[idx+0]
-                  var y1 = shape.vertices[idx+1]
-                  var z1 = shape.vertices[idx+2]
-                  p = Math.atan2(y1,z1) + shape.pitch
-                  d = Math.hypot(y1,z1)
-                  y1 = S(p) * d
-                  z1 = C(p) * d
-                  p = Math.atan2(x1, z1) + shape.yaw
-                  d = Math.hypot(x1, z1)
-                  x1 = S(p) * d
-                  z1 = C(p) * d
+                x = baseMazeNormalVecs[i+0]
+                y = baseMazeNormalVecs[i+1]
+                z = baseMazeNormalVecs[i+2]
+                p = Math.atan2(y,z) //+ t
+                d = Math.hypot(y,z)
+                y = S(p) * d
+                z = C(p) * d
+                p = Math.atan2(x, y) + tht
+                d = Math.hypot(x, y)
+                x = S(p) * d
+                y = C(p) * d
+                shape.normalVecs[i+j*shape.stride+0]=x
+                shape.normalVecs[i+j*shape.stride+1]=y
+                shape.normalVecs[i+j*shape.stride+2]=z
+              }
+              for(var i = 0; i < baseMazeVerts.length; i+=9){
+                var idx = i + j * shape.stride
+                var x1 = shape.vertices[idx+0]
+                var y1 = shape.vertices[idx+1]
+                var z1 = shape.vertices[idx+2]
+                p = Math.atan2(y1,z1) + shape.pitch
+                d = Math.hypot(y1,z1)
+                y1 = S(p) * d
+                z1 = C(p) * d
+                p = Math.atan2(x1, z1) + shape.yaw
+                d = Math.hypot(x1, z1)
+                x1 = S(p) * d
+                z1 = C(p) * d
 
-                  var x2 = shape.vertices[idx+3]
-                  var y2 = shape.vertices[idx+4]
-                  var z2 = shape.vertices[idx+5]
-                  p = Math.atan2(y2,z2) + shape.pitch
-                  d = Math.hypot(y2,z2)
-                  y2 = S(p) * d
-                  z2 = C(p) * d
-                  p = Math.atan2(x2, z2) + shape.yaw
-                  d = Math.hypot(x2, z2)
-                  x2 = S(p) * d
-                  z2 = C(p) * d
+                var x2 = shape.vertices[idx+3]
+                var y2 = shape.vertices[idx+4]
+                var z2 = shape.vertices[idx+5]
+                p = Math.atan2(y2,z2) + shape.pitch
+                d = Math.hypot(y2,z2)
+                y2 = S(p) * d
+                z2 = C(p) * d
+                p = Math.atan2(x2, z2) + shape.yaw
+                d = Math.hypot(x2, z2)
+                x2 = S(p) * d
+                z2 = C(p) * d
 
-                  var x3 = shape.vertices[idx+6]
-                  var y3 = shape.vertices[idx+7]
-                  var z3 = shape.vertices[idx+8]
-                  p = Math.atan2(y3,z3) + shape.pitch
-                  d = Math.hypot(y3,z3)
-                  y3 = S(p) * d
-                  z3 = C(p) * d
-                  p = Math.atan2(x3, z3) + shape.yaw
-                  d = Math.hypot(x3, z3)
-                  x3 = S(p) * d
-                  z3 = C(p) * d
-                  
-                  var ax = (x1+x2+x3) / 3
-                  var ay = (y1+y2+y3) / 3
-                  var az = (z1+z2+z3) / 3
-                  if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 20){
-                    var poly = [
-                      [x1,y1,z1],
-                      [x2,y2,z2],
-                      [x3,y3,z3],
-                    ]
-                    var ar
-                    if(ar=Coordinates.PointInPoly3D(ship.x,
-                                            ship.y,
-                                            ship.z,
-                                            ship.x+ship.vx*5,
-                                            ship.y+ship.vy*5,
-                                            ship.z+ship.vz*5,
-                                            poly)){
-                      collision = true
-                    }
+                var x3 = shape.vertices[idx+6]
+                var y3 = shape.vertices[idx+7]
+                var z3 = shape.vertices[idx+8]
+                p = Math.atan2(y3,z3) + shape.pitch
+                d = Math.hypot(y3,z3)
+                y3 = S(p) * d
+                z3 = C(p) * d
+                p = Math.atan2(x3, z3) + shape.yaw
+                d = Math.hypot(x3, z3)
+                x3 = S(p) * d
+                z3 = C(p) * d
+                
+                var ax = (x1+x2+x3) / 3
+                var ay = (y1+y2+y3) / 3
+                var az = (z1+z2+z3) / 3
+                if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 20){
+                  var poly = [
+                    [x1,y1,z1],
+                    [x2,y2,z2],
+                    [x3,y3,z3],
+                  ]
+                  var ar
+                  if(ar=Coordinates.PointInPoly3D(ship.x,
+                                          ship.y,
+                                          ship.z,
+                                          ship.x+ship.vx*5,
+                                          ship.y+ship.vy*5,
+                                          ship.z+ship.vz*5,
+                                          poly)){
+                    collision = true
                   }
                 }
               }
-              if(collision && alive && launched){
-                SpawnSplosion(ship.x, ship.y, ship.z)
-                alive = false
-                engines.pause()
-                engines.currentTime = 0
-              }
-              shape.pitch = S(t/3)/8
-              shape.yaw = C(t/3)/8
-              renderer.Draw(shape)
             }
-          })
-        
+            if(collision && alive && launched){
+              SpawnSplosion(ship.x, ship.y, ship.z)
+              alive = false
+              engines.pause()
+              engines.currentTime = 0
+            }
+            renderer.Draw(shape)
+          }
+        })
+      
         ///////////////
         
         if(alive && !launched){
