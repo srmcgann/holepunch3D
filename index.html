@@ -495,10 +495,7 @@
       var w = c.width = renderer.c.width
       var h = c.height = renderer.c.height
       
-      //var refTexture = 'https://i.imgur.com/PUZkjwn.mp4'
-      
-      var refTexture = 'https://srmcgann.github.io/skyboxes7/HDRI/quickgrid.png'
-      //var refTexture = 'https://srmcgann.github.io/skyboxes/HDRI/6.jpg'
+      var refTexture = ''
       
       var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
       var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
@@ -506,6 +503,7 @@
       var obstacleImg = 'https://srmcgann.github.io/holepunch3D/obstacle.png'
       
       var showBackground = true
+      var showCubeGrid = true
       var playbackSpeed = 2
       
       var goal = new Audio()
@@ -691,6 +689,29 @@
       ]
       var shader = await Coordinates.BasicShader(renderer, shaderOptions)
 
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .5}},
+        { uniform: {
+          type: 'phong',
+          value: .4
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .8
+        } },
+        { uniform: {
+          type: 'refraction',
+          angleOfRefraction: -.5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .5
+        } },
+      ]
+      var testShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
 
       var shaderOptions = [
         {lighting: {type: 'ambientLight', value: .1}},
@@ -828,7 +849,7 @@
       var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
 
       var shaderOptions = [
-        {lighting: {type: 'ambientLight', value: .33}},
+        {lighting: {type: 'ambientLight', value: .75}},
         { uniform: {
           type: 'phong',
           value: 0
@@ -1214,7 +1235,7 @@
         color: 0xffffff,
         colorMix: 0,
       }
-      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+      if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         shapes.push(geometry)
         await cubeGridShader.ConnectGeometry(geometry)
       })  
@@ -1540,6 +1561,22 @@
           await blackholeShader.ConnectGeometry(res)
         })
       })
+      
+      
+      var geoOptions = {
+        shapeType: 'dodecahedron',
+        name: 'test shape',
+        sphereize: 1,
+        averageNormals: true,
+        subs: 2,
+        map: refTexture,
+        size: 50,
+        colorMix: 0,
+      }
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await testShader.ConnectGeometry(geometry)
+      })
 
       var misplacedVerts, misplacedShape
       var geoOptions = {
@@ -1750,6 +1787,8 @@
               if(!muted) engines.play()
             }
             flightpath = []
+            var el = shapes.filter(v=>v.name=='lines')[0]
+            for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
             launched = true
             ranOnce = true
             document.querySelector('#launchButton').style.background='#800'
@@ -1904,9 +1943,11 @@
       var hasThrusters
       
       const Init = () => {
-        level = 8
+        level = 7
         level = Math.max(1,level)
         flightpath = []
+        var el = shapes.filter(v=>v.name=='lines')[0]
+        for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
         buttonTimerInterval = .25
         history = Array(1e3).fill('')
         historyPointer = 0
@@ -2381,6 +2422,9 @@
             `,
           })
         }
+        flightpath = []
+        var el = shapes.filter(v=>v.name=='lines')[0]
+        for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
         holesModified = true
         blackholes = Array(iPc).fill().map((v, i) => {
           x = 1e5
@@ -2407,6 +2451,29 @@
             massAvailable = 100 - total
           break
         }
+      }
+      
+      const SetRefTexture = texture => {
+        shapes.map(shape => {
+          if(shape.map == refTexture) {
+            shape.map = texture
+            shape.rebindTextures = true
+          }
+          shape.shader.datasets.map(ds=>{
+            if(ds.iURL == refTexture) {
+              ds.iURL = texture
+            }
+            if(typeof ds.optionalUniforms != 'undefined'){
+              ds.optionalUniforms.map(u => {
+                if(u.map == refTexture) {
+                  u.map = texture
+                  u.rebindTextures = true
+                }
+              })
+            }
+          })
+        })
+        refTexture = texture
       }
       
       var levelName
@@ -2445,9 +2512,6 @@
         holesModified = false
         if(initBlackHoles){
           bhIdx = 0
-          flightpath = []
-          var el = shapes.filter(v=>v.name=='lines')[0]
-          for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
           InitBlackHoles()
           ranOnce = false
         }
@@ -2490,6 +2554,8 @@
             //massAvailable = 100
             launched = false
             
+            showBackground = true
+            showCubeGrid = true
             hasThrusters = true
             initShipVx = 1
             initShipVy = 0
@@ -2543,7 +2609,10 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
             levelObstacleIdx = -1
             //massAvailable = 100
             launched = false
+            SetRefTexture('https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg')
             
+            showBackground = true
+            showCubeGrid = true
             hasThrusters = true
             initShipVx = 1
             initShipVy = 0
@@ -2592,7 +2661,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             SpawnTarget(200, 0, 0)
             
             planets = []
-            obstacles= []
             levelMazeIdx = -1
             levelObstacleIdx = -1
             var ls = 120
@@ -2622,6 +2690,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            SetRefTexture('https://srmcgann.github.io/skyboxes2/HDRI/nebula.jpg')
+            
+            showBackground = true
+            showCubeGrid = true
             hasThrusters = true
             initShipVx = 1
             initShipVy = 0
@@ -2670,6 +2742,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 0
             launched = false
             
+            showBackground = true
+            showCubeGrid = false
             hasThrusters = true
             initShipVx = 1.75
             initShipVy = 0
@@ -2717,6 +2791,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            showBackground = true
+            showCubeGrid = true
             hasThrusters = true
             initShipVx = 1
             initShipVy = 0
@@ -2765,6 +2841,9 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            showBackground = true
+            SetRefTexture('https://skyboxes2.verymad.net/images/12.jpg')
+            showCubeGrid = true
             hasThrusters = true
             initShipVx = 1
             initShipVy = 0
@@ -2812,7 +2891,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipZ = 0
             //massAvailable = 100
             launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/28.jpg')
             
+            showBackground = true
+            showCubeGrid = true
             hasThrusters = false
             initShipVx = .000001
             initShipVy = 0
@@ -2868,6 +2950,8 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             //massAvailable = 100
             launched = false
             
+            showBackground = true
+            showCubeGrid = true
             hasThrusters = false
             initShipVx = .000001
             initShipVy = 0
@@ -3363,12 +3447,14 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
         shapes.forEach(shape => {
           switch(shape.name){
             case 'background':
-              shape.x = -targX
-              shape.y = -targY
-              shape.z = -targZ
-              //shape.color = 0xffffff
-              //shape.colorMix = 1
-              renderer.Draw(shape)
+              if(showBackground){
+                shape.x = -targX
+                shape.y = -targY
+                shape.z = -targZ
+                //shape.color = 0xffffff
+                //shape.colorMix = 1
+                renderer.Draw(shape)
+              }
             break
             case 'smoke particles':
               var colors = shape.shader.datasets[0].optionalAttributes[0].value
@@ -3772,6 +3858,9 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 renderer.Draw(shape)
               }
             break
+            case 'test shape':
+              renderer.Draw(shape)
+            break
             case 'axis marker':
               if(AxisMarkersVisible()){
                   /*
@@ -3986,8 +4075,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
               renderer.Draw(shape)
             break
             case 'cube grid':
-              //if(!shipView) renderer.Draw(shape)
-              renderer.Draw(shape)
+              if(showCubeGrid){
+                //if(!shipView) renderer.Draw(shape)
+                renderer.Draw(shape)
+              }
             break
             case 'cursor':
               //if(!launched && alive) renderer.Draw(shape)
@@ -4142,7 +4233,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 refraction2.value = .75
                 refraction2.angleOfRefraction = -.25
                 lighting.value = .33
-                shape.yaw = t/8
+                shape.yaw = -t
               break
               default:
                 shape.pitch = S(t/3)/8
