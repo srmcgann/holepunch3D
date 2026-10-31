@@ -3,6 +3,7 @@
   
   to do:
     various backgrounds per level
+    working gyroscope
     ✔ suppressible popup describing level objective
     levels
     ✔ level opening 'quick spin' for depth perception
@@ -870,7 +871,7 @@
       ]
       var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
       
-      var iMazec = 5
+      var iMazec = 20
       var mazes = Array(iMazec).fill().map(v => {
         return { x: 0, y: 0, z: 0, size: 4, data: {}}
       })
@@ -1251,6 +1252,46 @@
         baseMazeNormalVecs = structuredClone(geometry.normalVecs)
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
           mazes[3].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/level10.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/level10.png',
+
+        scaleX: 120,
+        scaleY: 120,
+        scaleZ: 120,
+        //yaw: Math.PI/2,
+
+        name: 'maze',
+        color: 0xff0000,
+        colorMix: .075,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[4].data = {
             shape: res,
             baseMazeVerts,
             baseMazeNormalVecs,
@@ -1999,7 +2040,7 @@
       var hasThrusters
       
       const Init = () => {
-        level = 8
+        level = 1
         level = Math.max(1,level)
         flightpath = []
         var el = shapes.filter(v=>v.name=='lines')[0]
@@ -3116,6 +3157,59 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
           />--></span>
 `
 
+          break          
+//////////////////////////////
+//         LEVEL 10          //
+//////////////////////////////
+          case 10:
+            levelName = `${level} - FLY CAREFULLY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 4
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            //SetRefTexture('https://skyboxes2.verymad.net/images/stars.jpg',1)
+            
+            showBackground = false
+            showCubeGrid = true
+            initShipVx = 1 
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THROUGH THE MAZE
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
           break
           
         }
@@ -3739,50 +3833,50 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                       ctx.textAlign = 'center'
                       ctx.fillStyle = '#0ffb'
                       ctx.strokeStyle = '#000b'
-                      var fs = 2.75 * (10+bh.mass/2.75)
+                      var fs = 2.25 * (10+bh.mass/2.25)
                       ctx.font = fs + 'px Play'
                       ctx.lineWidth = 3
                       ctx.strokeText('[  ]', ar[0], ar[1] + fs/3.75)
                       ctx.fillText('[  ]', ar[0], ar[1] + fs/3.75)
-                      var fs2 = 32
+                      var fs2 = 24
                       ctx.font = fs2 + 'px Play'
                       ctx.strokeText(`mass ${bh.mass}`,
-                            x = ar[0], y = ar[1] + fs/2 + fs2)
+                            x = ar[0], y = ar[1] + fs / 2 + fs2)
                       ctx.fillText(`mass ${bh.mass}`,
-                            x = ar[0], y = ar[1] + fs/2 + fs2)
+                            x = ar[0], y = ar[1] + fs / 2 + fs2)
                       ctx.fillStyle = '#f808'
-                      var s = 50
-                      ctx.drawImage(decButton, x-s/2 - 100, y-s/2, s, s)
-                      ctx.drawImage(incButton, x-s/2 + 100, y-s/2, s, s)
-                      ctx.drawImage(delButton, x-s/2 + 0, ar[1]-bh.mass/2-80,
+                      var s = 25
+                      ctx.drawImage(decButton, x-s/2 - 75, y-s, s, s)
+                      ctx.drawImage(incButton, x-s/2 + 75, y-s, s, s)
+                      ctx.drawImage(delButton, x-s/2, ar[1]-bh.mass/2-40,
                                                 s, s)
 
                       s = bh.mass
                       Coordinates.Overlay.ctx.fillStyle = '#0f08'
-                      var x1 = ar[0]-100-25
-                      var y1 = ar[1]+s/2-5+25
-                      var x2 = x1 + 50
-                      var y2 = y1 + 50
+                      var x1 = ar[0]-75-12.5
+                      var y1 = ar[1]+s/2+12.5
+                      var x2 = x1 + 25
+                      var y2 = y1 + 25
                       if(mx>x1 && mx<x2 && my>y1 && my<y2){
                         bh.buttonHover = 1
                         document.querySelectorAll('canvas').forEach(el=>{
                           el.style.cursor = 'pointer'
                         })
                       }
-                      var x1 = ar[0]+100-25
-                      var y1 = ar[1]+s/2-5+25
-                      var x2 = x1 + 50
-                      var y2 = y1 + 50
+                      var x1 = ar[0]+75-12.5
+                      var y1 = ar[1]+s/2+12.5
+                      var x2 = x1 + 25
+                      var y2 = y1 + 25
                       if(mx>x1 && mx<x2 && my>y1 && my<y2){
                         bh.buttonHover = 2
                         document.querySelectorAll('canvas').forEach(el=>{
                           el.style.cursor = 'pointer'
                         })
                       }
-                      var x1 = ar[0]+0-25
-                      var y1 = ar[1]-s/2-80
-                      var x2 = x1 + 50
-                      var y2 = y1 + 50
+                      var x1 = ar[0]+0-12.5
+                      var y1 = ar[1]-s/2-40
+                      var x2 = x1 + 25
+                      var y2 = y1 + 25
                       if(mx>x1 && mx<x2 && my>y1 && my<y2){
                         bh.buttonHover = 3
                         document.querySelectorAll('canvas').forEach(el=>{
@@ -4376,6 +4470,17 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 shape.roll = S(t/2)/32
                 shape.yaw   = C(t/2)/32
               break
+              case 4:
+                phong.value = .05
+                reflection.value = .2
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .75
+                shape.alpha = .9
+                shape.disableDepthTest = true
+                shape.roll = S(t/2)/32
+                shape.yaw   = C(t/2)/32
+              break
               default:
                 shape.pitch = S(t/3)/8
                 shape.yaw = C(t/3)/8
@@ -4508,12 +4613,12 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 var bx = ar[0]
                 var by = ar[1]
                 var bz = ar[2]
-                var s = 140 * v.mass
-                var n = 1+v.mass/140
+                var s = 100 * v.mass
+                var n = 1+v.mass/100
                 if(!hoverTrigger &&
                   (d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
-                    (v.hover && -y < 80*n && -y > -90*n &&
-                    x > -140 && x < 140)){
+                    (v.hover && -y < 60*n && -y > -50*n &&
+                    x > -100 && x < 100)){
                   if(!v.button) v.buttonTimer = t + buttonTimerInterval
                   if(renderer.mouseButton == 1) v.button = true
                   hoverTrigger = v.hover = true
