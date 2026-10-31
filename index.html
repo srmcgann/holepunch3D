@@ -363,6 +363,9 @@
 
 
                 ARROWS  : rotate view
+                W/S     : zoom in/out
+                A/D     : fine camera rotation
+                ARROWS  : rotate view
                 O       : ship-cam view
                 H       : toggle HUD (in ship-camera mode)
                 C       : reset camera to default
@@ -1215,6 +1218,47 @@
         })
       })
       
+
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/maze5.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/maze5.png',
+
+        scaleX: 45,
+        scaleY: 60,
+        scaleZ: 60,
+        //yaw: Math.PI/2,
+
+        name: 'maze',
+        color: 0xff4400,
+        colorMix: .1,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[3].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+      
       var geoOptions = {
         shapeType: 'obj',
         //subs: 2,
@@ -1410,7 +1454,7 @@
         name: 'lines',
         geometryData,
         disableDepthTest: true,
-        alpha: .66,
+        alpha: .75,
         penumbra: 0,
         size: 20,
         color: 0xff8800,
@@ -1453,7 +1497,7 @@
         splode.currentTime = 0
         if(!muted) splode.play()
         for(var i = 0; i < 250; i++){
-          var v = iParticlev * Rn() ** .33
+          var v = iParticlev * Rn() ** 4
           var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * v
           var vy = C(q) * v
           var vz = C(p) * S(q) * v
@@ -1478,7 +1522,7 @@
         geometryData,
         alpha: .8,
         penumbra: .33,
-        size: 10,
+        size: 6,
         color: 0xff8800,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -1687,22 +1731,34 @@
                 }
               break
               case 37: // left arrow
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targYaw -= .025 * accel
+                }
                 //targYaw += .025 * accel
               break
               case 38: // up arrow
                 //targPitch -= .025 * accel
-                if(renderer.cameraMode != 'fps'){
-                  //targPitch = Math.min(1, Math.max(-1, targPitch))
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targPitch -= .025 * accel
                 }
+                //if(renderer.cameraMode != 'fps'){
+                  //targPitch = Math.min(1, Math.max(-1, targPitch))
+                //}
               break
               case 39: // right arrow
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targYaw += .025 * accel
+                }
                 //targYaw -= .025 * accel
               break
               case 40: // down arrow
                 //targPitch += .025 * accel
-                if(renderer.cameraMode != 'fps'){
-                  //targPitch = Math.min(1, Math.max(-1, targPitch))
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targPitch += .025 * accel
                 }
+                //if(renderer.cameraMode != 'fps'){
+                  //targPitch = Math.min(1, Math.max(-1, targPitch))
+                //}
               break
             }
           }
@@ -1897,7 +1953,7 @@
           break
           default:
             shipView = false
-            showHUD = true
+            //showHUD = true
             cursorDist = 100
             UnloadFPS()
             //LoadFPS()
@@ -1943,7 +1999,7 @@
       var hasThrusters
       
       const Init = () => {
-        level = 0
+        level = 8
         level = Math.max(1,level)
         flightpath = []
         var el = shapes.filter(v=>v.name=='lines')[0]
@@ -2249,9 +2305,11 @@
                     SpawnBlackHole()
             }
           }
-          var av = AxisView()
-          switch(e.keyCode){
+          if(!keys[16]) switch(e.keyCode){
             case 37:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
               switch(av){
                 case 'X':
                   targYaw -= Math.PI / 2
@@ -2280,6 +2338,9 @@
               }
             break
             case 38:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
               switch(av){
                 case 'X':
                   targYaw = 0
@@ -2308,6 +2369,9 @@
               }
             break
             case 39:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
               switch(av){
                 case 'X':
                   targYaw += Math.PI / 2
@@ -2336,6 +2400,9 @@
               }
             break
             case 40:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
               switch(av){
                 case 'X':
                   targYaw = 0
@@ -2453,7 +2520,7 @@
         }
       }
       
-      const SetRefTexture = texture => {
+      const SetRefTexture = (texture, bgLighting=.75) => {
         shapes.map(shape => {
           if(shape.map == refTexture) {
             shape.map = texture
@@ -2464,6 +2531,11 @@
               ds.iURL = texture
             }
             if(typeof ds.optionalUniforms != 'undefined'){
+              if(shape.name == 'background'){
+                ds.optionalLighting.map(u => {
+                  u.value = bgLighting
+                })
+              }
               ds.optionalUniforms.map(u => {
                 if(u.map == refTexture) {
                   u.map = texture
@@ -2556,10 +2628,10 @@
             
             showBackground = true
             showCubeGrid = true
-            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
             objectiveText = 
 `
 <img
@@ -2613,10 +2685,10 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
             
             showBackground = true
             showCubeGrid = true
-            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2694,10 +2766,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             
             showBackground = true
             showCubeGrid = true
-            hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2741,13 +2813,14 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipZ = 0
             //massAvailable = 0
             launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/pinkCluds.jpg')
             
             showBackground = true
             showCubeGrid = false
-            hasThrusters = true
             initShipVx = 1.75
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2790,13 +2863,15 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipZ = 0
             //massAvailable = 100
             launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/spacemaze1.jpg',.5)
             
             showBackground = true
-            showCubeGrid = true
+            showCubeGrid = false
             hasThrusters = true
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2840,14 +2915,14 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipZ = 0
             //massAvailable = 100
             launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/quickgrid.png',.25)
             
             showBackground = true
-            SetRefTexture('https://skyboxes2.verymad.net/images/12.jpg')
-            showCubeGrid = true
-            hasThrusters = true
+            showCubeGrid = false
             initShipVx = 1
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2895,10 +2970,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             
             showBackground = true
             showCubeGrid = true
-            hasThrusters = false
             initShipVx = .000001
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2949,13 +3024,14 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipZ = 0
             //massAvailable = 100
             launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/space4.jpg')
             
             showBackground = true
             showCubeGrid = true
-            hasThrusters = false
             initShipVx = .000001
             initShipVy = 0
             initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
             objectiveText = 
 `
@@ -2987,7 +3063,61 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 `
 
           break
+          
+//////////////////////////////
+//         LEVEL 9          //
+//////////////////////////////
+          case 9:
+            levelName = `${level} - FLY CAREFULLY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 3
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/stars.jpg',1)
+            
+            showBackground = true
+            showCubeGrid = false
+            initShipVx = .5 
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
 
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THROUGH THE MAZE
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
+          break
+          
         }
         if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
           RestoreCam()
@@ -3434,7 +3564,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
           Coordinates.Overlay.ctx.drawImage(victoryScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
         }else{
           if(!alive){
-            screenAlpha += .033
+            screenAlpha += .01
             screenAlpha = Math.min(.975, screenAlpha)
             Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
             Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
@@ -3522,7 +3652,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 var pDrag = 1.05
                 if(idx < particles.length){
                   var pt = particles[idx]
-                  pt.life -= .0025
+                  pt.life -= .001
                   shape.vertices[i+0] = pt.x += pt.vx /= pDrag
                   shape.vertices[i+1] = pt.y += pt.vy /= pDrag
                   shape.vertices[i+2] = pt.z += pt.vz /= pDrag
@@ -3813,7 +3943,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                             colors[idx2 + 0] = 1
                             colors[idx2 + 1] = 1
                             colors[idx2 + 2] = 1
-                            colors[idx2 + 3] = .25
+                            colors[idx2 + 3] = .33
                           }
                         }
                       }
@@ -3828,7 +3958,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                               colors[idx3 + 0] = 1
                               colors[idx3 + 1] = 0
                               colors[idx3 + 2] = 0
-                              colors[idx3 + 3] = .25
+                              colors[idx3 + 3] = .33
                             }
                             var x1 = flightpath[idx2].x1
                             var y1 = flightpath[idx2].y1
@@ -4219,21 +4349,32 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             var baseMazeNormalVecs = maze.data.baseMazeNormalVecs
             var collision = false
             var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
+            var ds = shape.shader.datasets.filter(v=>v.iURL==shape.map)[0]
+            var ol = ds.optionalLighting
+            var oa = ds.optionalUniforms
+            var phong = oa.filter(v=>v.name=='phong')[0]
+            var reflection = oa.filter(v=>v.name=='reflection')[0]
+            var refraction2 = oa.filter(v=>v.name=='refraction2')[0]
+            var lighting = ol.filter(v=>v.name=='ambientLight')[0]
             switch(levelMazeIdx){
               case 2:
-                var ds = shape.shader.datasets.filter(v=>v.iURL==shape.map)[0]
-                var ol = ds.optionalLighting
-                var oa = ds.optionalUniforms
-                var phong = oa.filter(v=>v.name=='phong')[0]
-                var reflection = oa.filter(v=>v.name=='reflection')[0]
-                var refraction2 = oa.filter(v=>v.name=='refraction2')[0]
-                var lighting = ol.filter(v=>v.name=='ambientLight')[0]
                 phong.value = .25
                 reflection.value = .1
                 refraction2.value = .75
                 refraction2.angleOfRefraction = -.25
                 lighting.value = .33
                 shape.yaw = -t
+              break
+              case 3:
+                phong.value = .05
+                reflection.value = .2
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .5
+                shape.alpha = .9
+                shape.disableDepthTest = true
+                shape.roll = S(t/2)/32
+                shape.yaw   = C(t/2)/32
               break
               default:
                 shape.pitch = S(t/3)/8
