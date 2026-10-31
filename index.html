@@ -730,12 +730,12 @@
           value: .05
         } },
         { uniform: {
-          type: 'refraction',
+          type: 'refraction2',
           angleOfRefraction: -.5,
           map: showBackground ? refTexture : '',
           enabled: true,
           playbackSpeed,
-          value: .5
+          value: 1
         } },
       ]
       var obstacleShader = await Coordinates.BasicShader(renderer, shaderOptions)
@@ -882,7 +882,7 @@
       })
       
       
-      var iLc = 2e3
+      var iLc = 1e3
       var colors = []
       Array(iLc).fill().map((v, i) => {
         var rgb   = Coordinates.HSVToRGB(360/iLc*i, 1, 1)
@@ -1149,22 +1149,22 @@
       })
       var geoOptions = {
         shapeType: 'cube',
-        map: 'https://srmcgann.github.io/Coordinates/resources/nebugrid_po2.jpg',
+        name: 'obstacle',
+        //map: 'https://srmcgann.github.io/Coordinates/resources/nebugrid_po2.jpg',
         //url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
         //size: 110,
-        subs: -1,
-        averageNormals: true,
+        subs: 0,
+        averageNormals: false,
         scaleX: 32*2,
         scaleY: 4,
         scaleZ: 32*2,
-        disableDepthTest: true,
-        alpha: .9,
+        //disableDepthTest: true,
+        //alpha: .9,
         sphereize: 0,
-        equirectangular: false,
-        name: 'obstacle',
+        equirectangular: true,
         playbackSpeed: 1,
-        color: 0xff0000,
-        colorMix: .15,
+        color: 0x00ff44,
+        colorMix: .25,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
         baseObstacleVerts = structuredClone(geometry.vertices)
@@ -2562,6 +2562,61 @@
       }
       
       const SetRefTexture = (texture, bgLighting=.75) => {
+        mazes.map((mz, oIdx) => {
+          if(typeof mz.data?.shape != 'undefined'){
+            var maze = mz.data.shape
+            console.log(mz.data)
+            if(maze.map == refTexture) {
+              maze.map = texture
+              maze.rebindTextures = true
+            }
+            maze.shader.datasets.map(ds=>{
+              if(ds.iURL == refTexture) {
+                ds.iURL = texture
+              }
+              if(typeof ds.optionalUniforms != 'undefined'){
+                if(maze.name == 'background'){
+                  ds.optionalLighting.map(u => {
+                    u.value = bgLighting
+                  })
+                }
+                ds.optionalUniforms.map(u => {
+                  if(u.map == refTexture) {
+                    u.map = texture
+                    u.rebindTextures = true
+                  }
+                })
+              }
+            })
+          }
+        })
+        obstacles.map((ob, oIdx) => {
+          if(typeof ob.data?.shape != 'undefined'){
+            var obs = ob.data.shape
+            if(obs.map == refTexture) {
+              obs.map = texture
+              obs.rebindTextures = true
+            }
+            obs.shader.datasets.map(ds=>{
+              if(ds.iURL == refTexture) {
+                ds.iURL = texture
+              }
+              if(typeof ds.optionalUniforms != 'undefined'){
+                if(obs.name == 'background'){
+                  ds.optionalLighting.map(u => {
+                    u.value = bgLighting
+                  })
+                }
+                ds.optionalUniforms.map(u => {
+                  if(u.map == refTexture) {
+                    u.map = texture
+                    u.rebindTextures = true
+                  }
+                })
+              }
+            })
+          }
+        })
         shapes.map(shape => {
           if(shape.map == refTexture) {
             shape.map = texture
@@ -2854,10 +2909,10 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             initShipZ = 0
             //massAvailable = 0
             launched = false
-            SetRefTexture('https://skyboxes2.verymad.net/images/pinkCluds.jpg')
+            //SetRefTexture('https://skyboxes2.verymad.net/images/grumpy%20derelict%20cat.png',.1)
             
-            showBackground = true
-            showCubeGrid = false
+            showBackground = false
+            showCubeGrid = true
             initShipVx = 1.75
             initShipVy = 0
             initShipVz = 0
@@ -3224,6 +3279,9 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
           vx: initShipVx,
           vy: initShipVy,
           vz: initShipVz,
+          ovx: initShipVx,
+          ovy: initShipVy,
+          ovz: initShipVz,
           hasThrusters,
           vecx: 0,
           vecy: 0,
@@ -4274,7 +4332,22 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                     }
                   }
                 }
-                if(!levelComplete) shape.roll += .02 * (launched ? (.025 + Math.hypot(ship.vx,ship.vy,ship.vz))*12 : 0)
+                if(!levelComplete) {
+                  //shape.roll += .02 * (launched ? (.025 +
+                    //Math.hypot(ship.vx,ship.vy,ship.vz))*12 : 0)
+
+                  var p1 = Math.atan2(ship.vx,ship.vz)
+                  var p2 = Math.atan2(ship.ovx,ship.ovz)
+                  if(Math.abs(p1-p2) > Math.PI){
+                    p1 += p1<p2 ? Math.PI*2 : -Math.PI*2
+                  }
+                  shape.roll = ((p2-p1)*2500 -
+                                shape.roll)/100
+                  shape.roll = Math.min(Math.PI/2, Math.max(-Math.PI/2,shape.roll))
+                  ship.ovx = ship.vx
+                  ship.ovy = ship.vy
+                  ship.ovz = ship.vz
+                }
                 renderer.Draw(shape)
               }
             break
@@ -4321,12 +4394,38 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
         obstacles.map((obstacle, oIdx) => {
           if(oIdx == levelObstacleIdx){
             var shape = obstacle.data.shape
+            var baseObstacleVerts = obstacle.data.baseObstacleVerts
+            var baseObstacleNormalVecs = obstacle.data.baseObstacleNormalVecs
+            var collision = false
+            var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
+            var ds = shape.shader.datasets.filter(v=>v.iURL==shape.map|| v.iURL == null)[0]
+            console.log(ds)
+            var ol = ds.optionalLighting
+            var oa = ds.optionalUniforms
+            var phong = oa.filter(v=>v.name=='phong')[0]
+            var reflection = oa.filter(v=>v.name=='reflection')[0]
+            var refraction2 = oa.filter(v=>v.name=='refraction2')[0]
+            var lighting = ol.filter(v=>v.name=='ambientLight')[0]
             switch(levelObstacleIdx){
+              case 0:
+                phong.value = .05
+                reflection.value = .1
+                refraction2.value = .5
+                refraction2.angleOfRefraction = -1
+                lighting.value = .1
+                shape.alpha = .9
+                shape.disableDepthTest = true
+                shape.colorMix = .2
+                shape.roll = S(t/3)/32
+                shape.yaw  = C(t/3)/32
+              break
               default:
+                shape.pitch = S(t/3)/8
+                shape.yaw = C(t/3)/8
               break
             }
             var collision = false
-            var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t*1.75))*Math.PI*1.25))
+            var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t*1.75/1))*Math.PI*1.25))
             for(var j = 0; j < shape.shapeData.length; j++){
               var ox = shape.shapeData[j].ox
               var oy = shape.shapeData[j].oy
