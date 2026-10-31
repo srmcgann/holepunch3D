@@ -137,6 +137,43 @@
         font-weight: 900;
         text-shadow: 0px 0px 5px #f00;
       }
+      .customCheckbox:hover{
+        background-color: #555;
+      }
+      .customCheckbox{
+        width: 26px;
+        height: 26px;
+        border: 1px solid #888;
+        display: inline-block;
+        position: absolute;
+        margin-top: 2px;
+        border-radius: 5px;
+        background: #000;
+      }
+      .checked{
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: 26px 26px;
+        background-color: #840;
+        background-image: url(checkmark.png);
+        background-color: #222;
+      }
+      input[type=checkbox]{
+        display: none;
+      }
+      .checkboxLabel{
+        cursor: pointer;
+        margin-left: 20px;
+      }
+      .checkboxText{
+        font-size:12px;
+        color:#f4c;
+        display: inline-block;
+        height: 20px;
+        line-height: 12px;
+        text-align: left;
+        margin-left: 32px;
+      }
       .buttons:focus{
         outline: none;
       }
@@ -404,6 +441,26 @@
             id="massNumeric"
           ></div>
         </div>
+        <label
+          class="checkboxLabel"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          data[for]="checkbox1"
+          data[type]="checkbox"
+          data[id]="1"
+          onclick="window.SetState(this)"
+          for="checkbox1"
+        >
+          <div id="custom1" class="customCheckbox"></div>
+          <input
+            type="checkbox" id="checkbox1"
+          >
+          <div
+            class="checkboxText"
+          >corkscrew<br>ship flight
+          </div>
+          </input>
+        </label>
         <hr>
         <button
           class="footerButton"
@@ -1948,7 +2005,6 @@
       }
       
       window.ShowObjective = () => {
-        console.log('ranOnce = ', ranOnce)
         var el = document.querySelector('#dialogueScreen')
         var contents = document.querySelector('#currentObjective').cloneNode(true)
         el.style.display = 'block'
@@ -2037,10 +2093,11 @@
       var cameras, predictiveLength, shipSteps
       var muted, history, historyPointer, historyTop
       var levelComplete, buttonTimerInterval
-      var hasThrusters
+      var hasThrusters, corkscrew
       
       const Init = () => {
         level = 1
+        corkscrew = false
         level = Math.max(1,level)
         flightpath = []
         var el = shapes.filter(v=>v.name=='lines')[0]
@@ -2565,7 +2622,6 @@
         mazes.map((mz, oIdx) => {
           if(typeof mz.data?.shape != 'undefined'){
             var maze = mz.data.shape
-            console.log(mz.data)
             if(maze.map == refTexture) {
               maze.map = texture
               maze.rebindTextures = true
@@ -2753,12 +2809,14 @@ FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
                     /></div></span>
 <div style="text-align: left;">
 
-            SPACE   :  launch ship
+             SPACE  :  launch ship
             ARROWS  :  rotate view
                  O  :  ship-cam view
                  H  :  toggle HUD (in ship-camera mode)
                  C  :  reset camera to default
                ESC  :  close this window
+       "corkscrew"  :  ship flies in a corkscrew,
+                         affects nothing else
 </div>`
           break
           
@@ -3489,6 +3547,23 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
         history[historyPointer++] = event
         if(historyPointer > history.length-1) history.shift()
         historyTop = historyPointer
+      }
+      
+      window.SetState = el => {
+        var prop = el.getAttribute('data[for]')
+        var type = el.getAttribute('data[type]')
+        var id = +el.getAttribute('data[id]')
+        var el = document.querySelector(`#${prop}`)
+        switch(type){
+          case 'checkbox':
+            var el2 = document.querySelector(`#custom${id}`)
+            console.log(el)
+            console.log(el2)
+            corkscrew = (el.checked = !el.checked)
+            
+            el2.classList[el.checked ? 'add' : 'remove']('checked')
+          break
+        }
       }
       
       window.Redo = () => {
@@ -4333,21 +4408,24 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   }
                 }
                 if(!levelComplete) {
-                  //shape.roll += .02 * (launched ? (.025 +
-                    //Math.hypot(ship.vx,ship.vy,ship.vz))*12 : 0)
-
-                  var p1 = Math.atan2(ship.vx,ship.vz)
-                  var p2 = Math.atan2(ship.ovx,ship.ovz)
-                  if(Math.abs(p1-p2) > Math.PI){
-                    p1 += p1<p2 ? Math.PI*2 : -Math.PI*2
+                  if(corkscrew){
+                    shape.roll += .02 * (launched ? (.025 +
+                    Math.hypot(ship.vx,ship.vy,ship.vz))*12 : 0)
+                  }else{
+                    var p1 = Math.atan2(ship.vx,ship.vz)
+                    var p2 = Math.atan2(ship.ovx,ship.ovz)
+                    if(Math.abs(p1-p2) > Math.PI){
+                      p1 += p1<p2 ? Math.PI*2 : -Math.PI*2
+                    }
+                    shape.roll = ((p2-p1)*2500 -
+                                  shape.roll)/100
+                    shape.roll = Math.min(Math.PI/2,
+                      Math.max(-Math.PI/2,shape.roll))
                   }
-                  shape.roll = ((p2-p1)*2500 -
-                                shape.roll)/100
-                  shape.roll = Math.min(Math.PI/2, Math.max(-Math.PI/2,shape.roll))
-                  ship.ovx = ship.vx
-                  ship.ovy = ship.vy
-                  ship.ovz = ship.vz
                 }
+                ship.ovx = ship.vx
+                ship.ovy = ship.vy
+                ship.ovz = ship.vz
                 renderer.Draw(shape)
               }
             break
@@ -4399,7 +4477,6 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             var collision = false
             var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
             var ds = shape.shader.datasets.filter(v=>v.iURL==shape.map|| v.iURL == null)[0]
-            console.log(ds)
             var ol = ds.optionalLighting
             var oa = ds.optionalUniforms
             var phong = oa.filter(v=>v.name=='phong')[0]
