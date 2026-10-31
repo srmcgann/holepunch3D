@@ -1,0 +1,4670 @@
+<!--
+  link https://notoriousbfg.com/hole-punch
+  
+  to do:
+    various backgrounds per level
+    ✔ suppressible popup describing level objective
+    levels
+    ✔ level opening 'quick spin' for depth perception
+    ✔ smart camera mode - tracks ship from non-ship position
+    ✔ target contact detection and level advancement
+    ✔ quick "axis-view" switching (make it the only option?)
+      OR multi-view display
+    ✔ sound effects
+    ✔ mute button
+    ✔ add / remove / delete blackholes
+    ✔ set / change blackhole mass
+    ✔ undo button
+    ✔ reset button
+    ✔ ship camera-view toggle
+    ✔ death screen (ship has left the container)
+    ✔ predictive dashed "short path"
+    ✔ path of travel (smoke)
+    ✔ fix spatial placement tool
+      - sliding components with reference shapes
+    ✔ new blackhole sprite, suitable for size/mass adjustments
+    ✔ improved cursor
+    ✔ misplaced / mass depleted indicator
+         status bar
+         ✔ ⤷ launch, undo, reset buttons
+         ✔ ⤷ mass meter
+         ✔ ⤷ level info
+         ✔ ⤷ help / hotkeys button
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>HOLEPUNCH 3D [work in progress]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      body, html{
+        background: #000;
+        margin: 0;
+        min-height: 100vh;
+        overflow: hidden;
+        font-family: Play;
+      }
+      .modal{
+        position: fixed;
+        background: #111e;
+        z-index: 200;
+        height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        display: none;
+      }
+      canvas{
+        cursor: crosshair;
+      }
+      hr{
+       line-height: 0;
+       height: 0;
+       margin: 0;
+       border-color: #666;
+      }
+      #hotkeys, #currentObjective{
+        overflow:  hidden;
+        font-family: monospace;
+        width: 500px;
+        white-space: pre;
+        color: #ff4;
+        border-radius: 50px;
+        padding: 10px;
+        min-height: 500px;
+        top: 50%;
+        left: 50%;
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: none;
+        overflow-y: auto;
+        background: #2221;
+        box-shadow: 0 0 250px #208f;
+        border-left: 5px solid #4448;
+        border-top: 5px solid #4448;
+        border-right: 5px solid #0008;
+        border-bottom: 5px solid #0008;
+      }
+      #header, #footer{
+        line-height: 32px;
+        font-size: 32px;
+        padding: 0px;
+        position: fixed;
+        width: 100vw;
+        z-index: 100;
+      }
+      #header{
+        height: 34px;
+        background: linear-gradient(-90deg, #444, #444, #333, #333, #111, #111, #111, #111,#200,#400,#400);
+        border-top: 1px solid #333;
+        border-bottom: 1px solid #500;
+      }
+      #footerControlCluster{
+        text-align: center;
+      }
+      .sidebars{
+        position: fixed;
+        width: 10px;
+        height: 100vh;
+        z-index: 200;
+      }
+      #leftSidebar{
+        background: linear-gradient(180deg, #400, #400, #444, #444);
+        border-top: 1px solid #333;
+        left: 0;
+        top: 0;
+      }
+      #rightSidebar{
+        background: linear-gradient(180deg, #444, #444, #111, #111);
+        border-top: 1px solid #333;
+        right: 0;
+        top: 0;
+      }
+      #footer{
+        height: 68px;
+        background: linear-gradient(90deg, #444, #444, #333, #333, #111, #111, #111, #111);
+        top: calc(100vh - 68px);
+        border-top: 1px solid #fff4;
+      }
+      #headerTitle{
+        color: #ba8;
+        transform: scale(1.5, 1.0);
+        display: inline-block;
+        margin-left: 80px;
+        font-style: italic;
+        font-weight: 900;
+        text-shadow: 0px 0px 5px #f00;
+      }
+      .buttons:focus{
+        outline: none;
+      }
+      .buttons{
+        border-radius: 10px;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+      }
+      button{
+        font-family: Play;
+      }
+      .specialArrow{
+        display: block;
+        position: absolute;
+        left: 370px;
+        margin-top: -34px;
+        font-size: 44px;
+        transform: rotate(-15deg);
+      }
+      .closeButton{
+        left: 50%;
+        line-height: 0;
+        padding-top: 5px;
+        min-height: 32px;
+        transform: translate(-50%);
+        background: #319;
+        color: #dbf;
+        text-shadow: 2px 2px 2px #000;
+        width: 140px;
+        position: absolute;
+        border-top: 1px solid #84f;
+        border-left: 1px solid #84f;
+        border-right: 3px solid #208;
+        border-bottom: 3px solid #208;
+      }
+      .muteButton_muted, .muteButton_unmuted{
+        border-top: 3px solid #dbd79e;
+        border-left: 3px solid #dbd79e;
+        border-right:3px solid #403e2c;
+        border-bottom: 3px solid #403e2c;
+        width: 40px;
+        height: 32px;
+        background-color: #6e6c4d;
+        background-size: 25px 25px;
+        background-position: center center;
+        background-repeat: no-repeat;
+      }
+      .muteButton_muted{
+        background-image: url(https://srmcgann.github.io/holepunch3D/mute.png);
+      }
+      .muteButton_unmuted{
+        background-image: url(https://srmcgann.github.io/holepunch3D/audio.png);
+      }
+      #objectiveText{
+        text-align: center;
+      }
+      .logo{
+        width: 400px;
+        margin-top: -50px;
+      }
+      .objImg{
+        width: 100px;
+        margin-top: 5px;
+        margin-left: 25px;
+      }
+      #helpButton{
+        background: #597;
+        border-top: 3px solid #6f8;
+        border-left: 3px solid #6f8;
+        border-right:3px solid #264;
+        border-bottom: 3px solid #264;
+      }
+      #helpButton, #muteButton{
+        min-width: unset;
+        margin-left: 5px;
+        margin-right: 5px;
+        color: #0f8;
+        font-weight:900;
+      }
+      .massMeterContainer{
+        width: 306px;
+        padding-left: 0!important;
+      }
+      #massMeter{
+        color: #fa4;
+      }
+      .menuLabel{
+        font-size: .4em;
+        margin-left: 30px;
+        vertical-align: top;
+        color: #feb
+      }
+      .headerElement{
+        min-width: 300px;
+      }
+      .footerElement{
+        //width: 200px;
+      }
+      .headerElement, .footerElement{
+        margin-left: 3px;
+        color: #feb;
+        background: #000;
+        font-size: 14px;
+        padding-top: 7px;
+        padding-left: 10px;
+        padding-right: 10px;
+        height: 20px;
+        margin-top: 3px;
+        line-height: 1em;
+        display: inline-block;
+        vertical-align: top;
+        border-radius: 5px;
+        border-bottom: 1px solid #888;
+        border-right: 1px solid #888;
+        text-align: left;
+      }
+      #massNumeric, #holeCount{
+        color: #fa4;
+        font-weight: 900;
+        padding-left: 0!important;
+      }
+      .infoContent{
+        display: inline-block;
+        color: #8fb;
+        font-size: 1.25em;
+      }
+      #launchButton{
+        background: #f80;
+        color: #fff;
+        border-top: 2px solid #db8;
+        border-left: 2px solid #db8;
+        border-right: 3px solid #543;
+        border-bottom: 3px solid #543;
+        text-shadow: 2px 2px 2px #120;
+      }
+      #undoButton, #redoButton{
+        font-size: 15px;
+        line-height: .6em;
+        padding-top: 4px;
+        padding-bottom: 0;
+        margin-top: 2px;
+      }
+      .headerButton:focus, .footerButton:focus{
+        outline: none;
+      }
+      .headerButton, .footerButton{
+        vertical-align: top;
+        font-family: Play;
+        font-size: 20px;
+        margin-top: 5px;
+        margin-left: 10px;
+        border-radius: 10px;
+        min-width: 80px;
+        line-height: .85em;
+        padding-bottom: 3px;
+        cursor: pointer;
+        background-color: #864;
+        color: #fff;
+        border-top: 2px solid #db8;gl
+        border-left: 2px solid #db8;
+        border-right: 3px solid #543;
+        border-bottom: 3px solid #543;
+        text-shadow: 2px 2px 2px #120;
+      }
+      #loadingText{
+        position: fixed;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        transform: translateY(-50%);
+        font-size: 66px;
+        font-family: Play;
+        color: #40f8;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loadingText">LOADING</div>
+    <div
+      class="modal"
+      id="dialogueScreen"
+      tabindex="0"
+      onkeydown="window.keysOnButton(event)"
+    ></div>
+    <div id="header">
+      <div id="headerTitle">HOLEPUNCH 3D</div>
+      <div
+        class="headerElement"
+        style="float:right;margin-right: 10px;"
+      >
+        LEVEL
+        <div
+          id="levelName"
+          class="infoContent"
+        ></div>
+      </div>
+      <button
+        class="headerButton"
+        style="float: right; margin-top: 3px;"
+        id="helpButton"
+        onclick="window.ShowObjective()"
+        onmouseover="window.hovering = true"
+        onmouseout="window.hovering = false"
+        title="show objective"
+      >
+        ?
+      </button>
+    </div>
+    <div class="sidebars" id="leftSidebar"></div>
+    <div class="sidebars" id="rightSidebar"></div>
+    <div id="hotkeys"
+      onkeydown="window.keysOnButton(event)"
+      tabindex="0"
+    >
+      <button
+        class="buttons closeButton"
+        title="close this"
+        tabindex="0"
+        style="top:450px"
+        autofocus="true"
+        onclick="window.CloseModal()"
+      >close <span style="font-size:.5em;vertical-align: middle;">[ESC]</span></button>
+
+
+                ARROWS  : rotate view
+                W/S     : zoom in/out
+                A/D     : fine camera rotation
+                ARROWS  : rotate view
+                O       : ship-cam view
+                H       : toggle HUD (in ship-camera mode)
+                C       : reset camera to default
+                ESC     : close this window
+    </div>
+    <div
+      id="currentObjective"
+      onkeydown="window.keysOnButton(event)"
+      tabindex="0"
+    >
+      <div id="objectiveText"></div>
+      <button
+        class="buttons closeButton"
+        title="close this"
+        tabindex="0"
+        style="top:450px"
+        autofocus="true"
+        onclick="window.CloseModal()"
+      >close <span style="font-size:.5em;vertical-align: middle;">[ESC]</span></button>
+    </div>
+    <div id="footer">
+      <div id="footerControlCluster">
+        <span class="menuLabel">
+          MASS
+        </span>
+        <div class="footerElement massMeterContainer" >
+          <div
+            id="massMeter"
+            class="infoContent"
+          ></div>
+        </div>
+        <div class="footerElement" style="min-width: unset">
+          <div
+            class="infoContent"
+            id="massNumeric"
+          ></div>
+        </div>
+        <hr>
+        <button
+          class="footerButton"
+          id="launchButton"
+          onclick="window.Launch()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="Launch"
+        >
+          LAUNCH
+        </button>
+        <button
+          class="footerButton"
+          onclick="window.Reset()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="remove all black holes"
+        >
+          RESET
+        </button>
+        <button
+          class="footerButton"
+          id="undoButton"
+          onclick="window.Undo()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="undo last modification"
+        >
+          UNDO<br><span style="font-size:.66em">ctrl + z</span>
+        </button>
+        <button
+          class="footerButton"
+          id="redoButton"
+          onclick="window.Redo()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="redo last modification"
+        >
+          REDO<br><span style="font-size: .66em">ctrl + shift + z</span>
+        </button>
+        <span class="menuLabel">
+          HOLES
+        </span>
+        <div class="footerElement holeCountContainer" style="min-width: unset" >
+          <div
+            id="holeCount"
+            class="infoContent"
+          ></div>
+        </div>
+        <button
+          class="headerButton muteButton_unmuted"
+          style="margin-left: 15px;margin-top: 2px;"
+          id="muteButton"
+          onclick="window.ToggleMute()"
+          onmouseover="window.hovering = true"
+          onmouseout="window.hovering = false"
+          title="mute / unmute"
+        ></button>
+      </div>
+    </div>
+    <script>
+      var el = document.querySelector('#loadingText')
+      var loaded = false, ct=0
+      window.cancelLoadingText = false
+      var lDraw = () => {
+        var l = ('.').repeat(3+((ct/3|0)%5))
+        el.innerHTML = `${l} LOADING ${l}`
+        ct++
+        if(!window.cancelLoadingText) requestAnimationFrame(lDraw)
+      }
+      lDraw()
+    </script>
+    <script type="module">
+
+      import * as Coordinates from
+      "https://cantelope42.github.io/tempppppp/coordinates.js?3"
+      //"https://srmcgann.github.io/Coordinates/coordinates.min.js?2"
+
+      var rendererOptions = {
+        ambientLight: .5, margin: 10, fit: 'cover',
+        fov: 900, width: 1920, height: 1080,
+      }
+      var renderer = await Coordinates.Renderer(rendererOptions)
+
+      
+      rendererOptions.context = {
+        mode: '2d'
+      }
+      rendererOptions.attachToBody = true
+      var scratchCanvas = await Coordinates.Renderer(rendererOptions)
+      var c = scratchCanvas.c
+      var ctx = scratchCanvas.ctx
+      var w = c.width = renderer.c.width
+      var h = c.height = renderer.c.height
+      
+      var refTexture = ''
+      
+      var targetImgURL = 'https://srmcgann.github.io/holepunch3D/target.png'
+      var hp3dLogo = 'https://srmcgann.github.io/holepunch3D/hp3dLogo.png'
+      var arrowKeys = 'https://srmcgann.github.io/holepunch3D/arrowKeys.png'
+      var obstacleImg = 'https://srmcgann.github.io/holepunch3D/obstacle.png'
+      
+      var showBackground = true
+      var showCubeGrid = true
+      var playbackSpeed = 2
+      
+      var goal = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/goal.ogg'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        goal.loop = false
+        goal.volume = 1
+        goal.src = URL.createObjectURL(data)
+      })
+
+      var increase = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/increase.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        increase.loop = false
+        increase.volume = .8
+        increase.src = URL.createObjectURL(data)
+      })
+
+      var missile = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/missile.wav'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        missile.loop = false
+        missile.volume = .5
+        missile.src = URL.createObjectURL(data)
+      })
+
+      var alarm = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/alarm.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        alarm.loop = false
+        alarm.volume = .25
+        alarm.src = URL.createObjectURL(data)
+      })
+
+      var engines = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/engines.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        engines.loop = true
+        engines.volume = .75
+        engines.src = URL.createObjectURL(data)
+      })
+
+      var splode = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/splode.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        splode.loop = false
+        splode.volume = 1
+        splode.src = URL.createObjectURL(data)
+      })
+
+      var splode2 = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/splode2.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        splode2.loop = false
+        splode2.volume = .25
+        splode2.src = URL.createObjectURL(data)
+      })
+
+      var decrease = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/decrease.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        decrease.loop = false
+        decrease.volume = .8
+        decrease.src = URL.createObjectURL(data)
+      })
+
+      var destroy = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/destroy.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        destroy.loop = false
+        destroy.volume = 1
+        destroy.src = URL.createObjectURL(data)
+      })
+
+      var misclick = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/misclick.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        misclick.loop = false
+        misclick.volume = .8
+        misclick.src = URL.createObjectURL(data)
+      })
+
+      var strum = new Audio()
+      var url = 'https://srmcgann.github.io/holepunch3D/strum.mp3'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        strum.loop = false
+        strum.volume = .8
+        strum.src = URL.createObjectURL(data)
+      })
+
+      /*var mutedIcon = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/mute.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        mutedIcon.src = URL.createObjectURL(data)
+      })
+      
+      var audioIcon = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/audio.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        audioIcon.src = URL.createObjectURL(data)
+      })
+      */
+      
+      var HUD = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/HUD.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        HUD.src = URL.createObjectURL(data)
+      })
+      
+      var logo = new Image()
+      var url = hp3dLogo
+      await fetch(url).then(res=>res.blob()).then(data => {
+        logo.src = URL.createObjectURL(data)
+      })
+      
+      var HUD_dead = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/HUD_red.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        HUD_dead.src = URL.createObjectURL(data)
+      })
+      
+      var victoryScreen = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/victory.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        victoryScreen.src = URL.createObjectURL(data)
+      })
+      
+      var deathScreen = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/deathScreen.jpg'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        deathScreen.src = URL.createObjectURL(data)
+      })
+      
+      var decButton = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/decButton.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        decButton.src = URL.createObjectURL(data)
+      })
+      
+      var incButton = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/incButton.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        incButton.src = URL.createObjectURL(data)
+      })
+      
+      var delButton = new Image()
+      var url = 'https://srmcgann.github.io/holepunch3D/delete.png'
+      await fetch(url).then(res=>res.blob()).then(data => {
+        delButton.src = URL.createObjectURL(data)
+      })
+      
+      
+      var S = Math.sin
+      var C = Math.cos
+      var Rn = Math.random
+      
+      var x, y, z, p, q, d, l
+      
+      Coordinates.AnimationLoop(renderer, 'Draw')
+
+      var boundingBoxSize = 1e3/4
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .8
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .1
+        } },
+        { uniform: {
+          type: 'refraction',
+          angleOfRefraction: -.5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .25
+        } },
+      ]
+      var shader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .5}},
+        { uniform: {
+          type: 'phong',
+          value: .4
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .8
+        } },
+        { uniform: {
+          type: 'refraction',
+          angleOfRefraction: -.5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .5
+        } },
+      ]
+      var testShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .1
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .05
+        } },
+        { uniform: {
+          type: 'refraction',
+          angleOfRefraction: -.5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .5
+        } },
+      ]
+      var obstacleShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .1
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          enabled: true,
+          value: .2
+        } },
+        { uniform: {
+          type: 'refraction2',
+          angleOfRefraction: .5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: .5
+        } },
+      ]
+      var mazeShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .02
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          enabled: true,
+          value: .2
+        } },
+        { uniform: {
+          type: 'refraction2',
+          angleOfRefraction: .5,
+          map: showBackground ? refTexture : '',
+          enabled: true,
+          playbackSpeed,
+          value: 1
+        } },
+      ]
+      var mazeShader2 = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
+      var colors = []
+      var len = 2564*3 * 3
+      Array(len).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/len*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .1}},
+        { uniform: {
+          type: 'phong',
+          value: .05
+        } },
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: colors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            addInColor = attribCols;
+          `,
+        }},
+      ]
+      var cursorBoundingShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .5}},
+        { uniform: {
+          type: 'phong',
+          value: .4
+        } },
+        { uniform: {
+          type: 'reflection',
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          value: .3
+        } },
+      ]
+      var shipShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: 1.5}},
+        { uniform: {
+          type: 'phong',
+          value: 0
+        } },
+      ]
+      var blackholeShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .75}},
+        { uniform: {
+          type: 'phong',
+          value: 0
+        } }
+      ]
+      var backgroundShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+      var shaderOptions = [
+        {lighting: {type: 'ambientLight', value: .15}},
+        { uniform: {
+          type: 'phong',
+          value: 0,
+          //theta: .5,
+        } }
+      ]
+      var cubeGridShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      
+      var iMazec = 5
+      var mazes = Array(iMazec).fill().map(v => {
+        return { x: 0, y: 0, z: 0, size: 4, data: {}}
+      })
+      
+      var iObstaclec = 5
+      var obstacles = Array(iObstaclec).fill().map(v => {
+        return { x: 0, y: 0, z: 0, size: 4, data: {}}
+      })
+      
+      
+      var iLc = 2e3
+      var colors = []
+      Array(iLc).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/iLc*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
+      
+      var shaderOptions = [
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: colors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            mixColor = attribCols;
+          `,
+        }},
+      ]
+      var linesShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
+      var iParticlesc = 1e3
+      var colors = []
+      Array(iParticlesc).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/iParticlesc*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
+      
+      var shaderOptions = [
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: colors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            mixColor = attribCols;
+          `,
+        }},
+      ]
+      var particlesShader = await Coordinates.BasicShader(renderer, shaderOptions)
+
+
+      var iSmokec = 2e3
+      var iSmokev = .075
+      var particleColors = []
+      Array(iSmokec).fill().map((v, i) => {
+        var rgb   = Coordinates.HSVToRGB(360/iSmokec*i, 1, 1)
+        var red   = rgb[0] / 256
+        var green = rgb[1] / 256
+        var blue  = rgb[2] / 256
+        colors.push(red, green, blue, 1)
+      })
+      
+      var shaderOptions = [
+        { attribute: {
+          type: 'custom',
+          enabled: true, 
+          value: particleColors,
+          name: 'customColors',
+          stride: 4,
+          dataType: renderer.ctx.FLOAT,
+          vertDeclaration: `
+            attribute vec4 customColors;
+            varying vec4 attribCols;
+          `,
+          vertCode:        `
+            attribCols = customColors;
+          `,
+          fragDeclaration: `
+            varying vec4 attribCols;
+          `,
+          fragCode: `
+            mixColor = attribCols;
+          `,
+        }},
+      ]
+      var particleShader = await Coordinates.BasicShader(renderer, shaderOptions)
+      
+      window.keysOnButton = e => {
+        if(e.keyCode == 27){
+          CloseModal()
+        }
+      }
+
+      var shapes = []
+
+      if(showBackground){
+        var geoOptions = {
+          shapeType: 'dodecahedron',
+          name: 'background',
+          sphereize: 1,
+          subs: 4,
+          map: showBackground ? refTexture : '',
+          playbackSpeed,
+          size: 5e3,
+          colorMix: 0,
+        }
+        await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+          shapes.push(geometry)
+          await backgroundShader.ConnectGeometry(geometry)
+        })
+      }
+
+      var basePlanetVerts
+      var iPlanetc = 20
+      var pointArray = []
+      Array(iPlanetc).fill().map((v, i) => {
+        x = 1e5
+        y = 1e5
+        z = 1e5
+        pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'icosahedron',
+        //url: 'https://srmcgann.github.io/holepunch3D/geosphere_uvs.obj?3',
+        map: 'https://srmcgann.github.io/Coordinates/resources/earth_with_clouds_animated_lowres.mp4',
+        //equirectangular: false,
+        name: 'planet',
+        sphereize: 1,
+        subs: 1,
+        //scaleX: 4,
+        //scaleY: 4,
+        //scaleZ: 4,
+        averageNormals: true,
+        playbackSpeed: 1,
+        size: 4,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        basePlanetVerts = structuredClone(geometry.vertices)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          shapes.push(res)
+          await shader.ConnectGeometry(res)
+        })
+      })
+      
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 100
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp
+        pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/maze2.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/maze2.png',
+        name: 'maze',
+
+        alpha: .9,
+        disableDepthTest: true,
+        //averageNormals: true,
+        color: 0x4400ff,
+        colorMix: 0,
+        
+        scaleX: 33,
+        scaleY: 33,
+        scaleZ: 33,
+        playbackSpeed: 1,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[0].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 100
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp
+        pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/maze4.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/maze4.png',
+        name: 'maze',
+
+        alpha: .9,
+        disableDepthTest: true,
+        //averageNormals: true,
+        color: 0x4400ff,
+        colorMix: 0,
+        
+        scaleX: 90,
+        scaleY: 90,
+        scaleZ: 90,
+        playbackSpeed: 1,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[1].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader2.ConnectGeometry(res)
+        })
+      })
+      
+      var baseObstacleVerts
+      var baseObstacleNormalVecs
+      var cl = 3
+      var rw = 4
+      var br = 4
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'cube',
+        map: 'https://srmcgann.github.io/Coordinates/resources/nebugrid_po2.jpg',
+        //url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
+        //size: 110,
+        subs: -1,
+        averageNormals: true,
+        scaleX: 32*2,
+        scaleY: 4,
+        scaleZ: 32*2,
+        disableDepthTest: true,
+        alpha: .9,
+        sphereize: 0,
+        equirectangular: false,
+        name: 'obstacle',
+        playbackSpeed: 1,
+        color: 0xff0000,
+        colorMix: .15,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseObstacleVerts = structuredClone(geometry.vertices)
+        baseObstacleNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          obstacles[0].data = {
+            shape: res,
+            baseObstacleVerts,
+            baseObstacleNormalVecs,
+          }
+          await obstacleShader.ConnectGeometry(res)
+        })
+      })
+
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/debrisField.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/debrisField.png',
+
+        scaleX: 33,
+        scaleY: 33,
+        scaleZ: 33,
+        yaw: Math.PI/2,
+
+        name: 'maze',
+        color: 0x4400ff,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[2].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+      
+
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/maze5.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/maze5.png',
+
+        scaleX: 45,
+        scaleY: 60,
+        scaleZ: 60,
+        //yaw: Math.PI/2,
+
+        name: 'maze',
+        color: 0xff4400,
+        colorMix: .1,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[3].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/level10.obj',
+        //map: 'https://srmcgann.github.io/holepunch3D/maze5.png',
+
+        scaleX: 10,
+        scaleY: 10,
+        scaleZ: 10,
+        //yaw: Math.PI/2,
+
+        name: 'maze',
+        color: 0x4400ff,
+        colorMix: .3,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[4].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var geoOptions = {
+        shapeType: 'obj',
+        //subs: 2,
+        //sphereize: .5,
+        //averageNormals: true,
+        size: 1.5,
+        url: 'https://srmcgann.github.io/holepunch3D/cubeGrid.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/cubegrid.png',
+        //map: 'https://srmcgann.github.io/Coordinates/resources/rd1_po2.png',
+        //scaleUVX: 4,
+        //scaleUVY: 4,
+        name: 'cube grid',
+        disableDepthTest: true,
+        alpha: .9,
+        scaleX: boundingBoxSize,
+        scaleY: boundingBoxSize,
+        scaleZ: boundingBoxSize,
+        color: 0xffffff,
+        colorMix: 0,
+      }
+      if(1) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await cubeGridShader.ConnectGeometry(geometry)
+      })  
+      
+      var pointArray = Array(10).fill().map((v,i)=>[0,0,0])
+      var cbVerts
+      var cbSize = 1
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/axis_marker_with_spatial_references.obj?2',
+        //map: 'https://srmcgann.github.io/holepunch3D/axisMarker.png',
+        name: 'axis marker',
+        colorMix: 0,
+        scaleX: boundingBoxSize/2,
+        scaleY: boundingBoxSize/2,
+        scaleZ: boundingBoxSize/2,
+        //subs: 2,
+        //sphereize: 1,
+        disableDepthTest: true,
+        alpha: 1,
+        //size: 10,
+        colorMix: 0,
+        color: 0xff0000,
+      }
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        Coordinates.ShapeFromArray(geometry,
+              [[0,0,0],[0,0,0],[0,0,0]]).then(async res => {
+          //res.cullFace = 'back'
+          res.colorMix = 0
+          res.alpha = .2
+          res.shapeData.map((subShape, sIdx) => {
+            switch(sIdx){
+              case 0:
+                subShape.yaw = 0
+                subShape.pitch = 0
+                subShape.roll = 0
+              break
+              case 1:
+                subShape.yaw = 0
+                subShape.pitch = 0
+                subShape.roll = Math.PI/2
+              break
+              case 2:
+                subShape.yaw = Math.PI/2
+                subShape.pitch = 0
+                subShape.roll = 0
+              break
+            }
+          })
+          shapes.push(res)
+          await cursorBoundingShader.ConnectGeometry(res)
+
+          var colors = res.shader.datasets[0].optionalAttributes[0].value
+          var red, green, blue
+          for(var i = 0; i < 3; i ++){
+            switch(i){
+              case 0:
+                red   = 1
+                green = 0
+                blue  = 0
+              break
+              case 1:
+                red   = 1
+                green = 1
+                blue  = 0
+              break
+              case 2:
+                red   = 0
+                green = 0
+                blue  = 1
+              break
+            }
+            for(var j = 0; j < res.stride; j ++){
+              var idx = (j + i * res.stride) / 3 * 4
+              colors[idx + 0] = red
+              colors[idx + 1] = green
+              colors[idx + 2] = blue
+              colors[idx + 3] = 1
+            }
+          }
+
+        })
+        //shapes.push(geometry)
+        //await cursorBoundingShader.ConnectGeometry(geometry)
+      })
+
+      
+      
+      var pointArray = []
+      var rad = 100
+      var iPc = 20
+      Array(iPc).fill().map((v, i) => {
+        var ls = Rn() ** .5 * rad
+        if(0){
+          x = S(p=Math.PI*2*Rn())*S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * ls
+          y = C(q) * ls
+          z = C(p) * S(q) * ls
+        }else{
+          x = 1e5
+          y = 1e5
+          z = 1e5
+        }
+        pointArray.push([x,y,z])
+      })
+      
+      var blackholeDiskVerts
+      var uvs = []
+      var normals = []
+      var vertices = []
+      var normalVecs = []
+      var ls = 2.6
+      var sd = 10
+      for(var i = 0; i < sd*9; i+=3){
+        var j = i/3
+        var x1 = S(p=Math.PI*2/sd*j + Math.PI/sd) * ls
+        var y1 = C(p) * ls
+        var z1 = 0
+        var x2 = S(p=Math.PI*2/sd*(j+1) + Math.PI/sd) * ls
+        var y2 = C(p) * ls
+        var z2 = 0
+        var x3 = 0
+        var y3 = 0
+        var z3 = 0
+        vertices.push(x1,y1,z1, x2,y2,z2, x3,y3,z3)
+        normalVecs.push(0,0,-1, 0,0,-1, 0,0,-1 )
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        normals.push(0,0,0, 0,0,-1)
+        uvs.push(0,0,0,0,0,0)
+      }
+      
+      var geometryData = {
+        normalVecs,
+        vertices,
+        normals,
+        uvs,
+      }
+      var geoOptions = {
+        shapeType: 'custom shape',
+        geometryData,
+        name: 'blackhole disk',
+        color: 0x000000,
+        colorMix: 1,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        for(var i = 0; i < geometry.vertices.length; i += 3){
+          x = geometry.vertices[i+0]
+          y = geometry.vertices[i+1]
+          z = geometry.vertices[i+2]
+          //geometry.vertices[i+0] = x - .1
+          //geometry.vertices[i+1] = y + .1
+          geometry.vertices[i+2] = z + .08
+        }
+        blackholeDiskVerts = structuredClone(geometry.vertices)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          shapes.push(res)
+          await blackholeShader.ConnectGeometry(res)
+        })
+      })
+      
+      var lines = []
+      var geometryData = []
+      var linesShape
+      Array(iLc).fill().map((v, i) => {
+        geometryData.push([1e5,1e5,1e5],[1e5,1e5,1e5])
+      })
+      var geoOptions = {
+        shapeType: 'lines',
+        name: 'lines',
+        geometryData,
+        disableDepthTest: true,
+        alpha: .75,
+        penumbra: 0,
+        size: 20,
+        color: 0xff8800,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        linesShape = geometry
+        await linesShader.ConnectGeometry(geometry)
+      })
+
+      var smoke
+      var geoOptions = {
+        shapeType: 'particles',
+        name: 'smoke particles',
+        geometryData: Array(iSmokec).fill().map(v=>[1e5,1e5,1e5]),
+        alpha: 1,
+        disableDepthTest: true,
+        penumbra: .5,
+        size: 5,
+        color: 0xffbb88,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await particleShader.ConnectGeometry(geometry)
+      })
+      
+      const SpawnSmoke = (x, y, z) => {
+        var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * iSmokev
+        var vy = C(q) * iSmokev
+        var vz = C(p) * S(q) * iSmokev
+        smoke.push({ x, y, z, vx, vy, vz, life: 1 })
+      }
+
+      var iParticlev = 3
+      const SpawnSplosion = (x, y, z) => {
+        splode2.pause()
+        splode2.currentTime = 0
+        if(!muted) splode2.play()
+        splode.pause()
+        splode.currentTime = 0
+        if(!muted) splode.play()
+        for(var i = 0; i < 250; i++){
+          var v = iParticlev * Rn() ** 4
+          var vx = S(p=Math.PI*2*Rn()) * S(q=Rn()<.5?Math.PI/2*Rn()**.5:Math.PI-Math.PI/2*Rn()**.5) * v
+          var vy = C(q) * v
+          var vz = C(p) * S(q) * v
+          particles.push({ x, y, z, vx, vy, vz, life: 1 })
+        }
+      }
+
+      var particles = []
+      var geometryData = []
+      Array(iParticlesc).fill().map((v, i) => {
+        x = 1e5
+        y = 1e5
+        z = 1e5
+        var vx = 0
+        var vy = 0
+        var vz = 0
+        geometryData.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'particles',
+        name: 'particles',
+        geometryData,
+        alpha: .8,
+        penumbra: .33,
+        size: 6,
+        color: 0xff8800,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await particlesShader.ConnectGeometry(geometry)
+      })
+      
+      var cursor
+      var geoOptions = {
+        shapeType: 'sprite',
+        map: 'https://srmcgann.github.io/Coordinates/resources/stars/star6.png',
+        name: 'cursor',
+        size: 25,
+        colorMix: 0,
+        disableDepthTest: true,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        cursor = geometry
+        shapes.push(geometry)
+      })
+      
+      /*
+      var geoOptions = {
+        shapeType: 'octahedron',
+        sphereize: 1,
+        subs: 1,
+        name: 'test marker',
+        rotationMode: 2,
+        size: 5,
+        color: 0xff0000,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        await Coordinates.ShapeToLines(geometry).then(res => {
+          res.shape.rotationMode = 2
+          res.shape.name = 'test marker'
+          res.shape.color = 0x00ffff
+          shapes.push(res.shape)
+        })
+      })
+      */
+      
+      var geoOptions = {
+        shapeType: 'obj',
+        url: 'https://srmcgann.github.io/holepunch3D/ship.obj?2',
+        map: 'https://srmcgann.github.io/holepunch3D/ship.png',
+        name: 'ship',
+        rotationMode: 2,
+        scaleX: 1,
+        scaleY: 1,
+        scaleZ: 2,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await shipShader.ConnectGeometry(geometry)
+      })
+      
+      var blackholeVerts
+      var geoOptions = {
+        shapeType: 'rect',
+        map: 'https://srmcgann.github.io/holepunch3D/blackhole_new.png',
+        name: 'blackhole',
+        alpha: .9,
+        disableDepthTest: true,
+        scaleY: -1,
+        size: 10,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        blackholeVerts = structuredClone(geometry.vertices)
+        var cyls = shapes.filter(shape => shape.name == 'blackhole disk')[0].shapeData
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          res.shapeData.map((subShape, sIdx) => {
+            var roll = Rn() * Math.PI*2
+            subShape.roll = roll
+            cyls[sIdx].roll = roll
+          })
+          shapes.push(res)
+          await blackholeShader.ConnectGeometry(res)
+        })
+      })
+      
+      
+      var geoOptions = {
+        shapeType: 'dodecahedron',
+        name: 'test shape',
+        sphereize: 1,
+        averageNormals: true,
+        subs: 2,
+        map: refTexture,
+        size: 50,
+        colorMix: 0,
+      }
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        shapes.push(geometry)
+        await testShader.ConnectGeometry(geometry)
+      })
+
+      var misplacedVerts, misplacedShape
+      var geoOptions = {
+        shapeType: 'sprite',
+        map: 'https://srmcgann.github.io/holepunch3D/misplaced.png?2',
+        name: 'misplaced',
+        disableDepthTest: true,
+        scaleY: -1,
+        size: 25,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        misplacedVerts = structuredClone(geometry.vertices)
+        misplacedShape = geometry
+      })
+      
+      var tempCube
+      var geoOptions = {
+        shapeType: 'cube',
+        subs: -1,
+        name: 'temp cube',
+        size: 2e3 *.866,
+      }	
+      if(0) await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        Coordinates.ShapeToLines(geometry, {
+          color: 0xff8800,
+          alpha: .8,
+          penumbra: .3,
+          size: 100,
+          closePaths: false,
+        }).then(res => {
+          tempCube = res.shape
+        })
+      })
+      
+      var iTargc = 10
+      var targets = []
+      var targetsShape
+      var pointArray = []
+      Array(iTargc).fill().map(v => {
+        pointArray.push([x=1e5,y=1e5,z=1e5])
+      })
+      
+      const SpawnTarget = (x, y, z, vx=0, vy=0, vz=0) => {
+        targets=[{ x, y, z, vx, vy, vz }]
+      }
+      
+      var geoOptions = {
+        shapeType: 'sprite',
+        map: targetImgURL,
+        name: 'target',
+        size: 25,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        targetsShape = geometry
+        shapes.push(geometry)
+        if(0)Coordinates.ShapeFromArray(geometry, pointArray).then(res => {
+          targetsShape = res
+          shapes.push(res)
+        })
+      })
+      
+
+
+      Coordinates.LoadFPSControls(renderer, {
+        flyMode: true,
+        mSpeed: 15,
+        crossharSel: 2,
+        crosshairSize: .5,
+        showCrosshair: false,
+      })
+      
+      const LoadFPS = () => {
+        renderer.cameraMode = 'fps'
+        renderer.useFPSControls = true
+        renderer.useKeys = true
+      }
+
+      var accel
+      var maxDist = boundingBoxSize
+      const DoKeys = () => {
+        accel = keys[16] ? 3 : 1
+        keys.map((state, key) => {
+          if(state){
+            
+            switch(key){
+              case 87: //w
+                if(renderer.cameraMode != 'fps'){
+                  targZ -= 1 * accel
+                  targZ = Math.max(10, targZ)
+                }
+              break
+              case 65: //a
+                if(renderer.cameraMode != 'fps'){
+                  targYaw -= .025 * accel
+                }
+              break
+              case 83: //s
+                if(renderer.cameraMode != 'fps'){
+                  targZ += 1 * accel
+                  targZ = Math.min(maxDist, targZ)
+                }
+              break
+              case 68: //d
+                if(renderer.cameraMode != 'fps'){
+                  targYaw += .025 * accel
+                }
+              break
+              case 37: // left arrow
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targYaw -= .025 * accel
+                }
+                //targYaw += .025 * accel
+              break
+              case 38: // up arrow
+                //targPitch -= .025 * accel
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targPitch -= .025 * accel
+                }
+                //if(renderer.cameraMode != 'fps'){
+                  //targPitch = Math.min(1, Math.max(-1, targPitch))
+                //}
+              break
+              case 39: // right arrow
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targYaw += .025 * accel
+                }
+                //targYaw -= .025 * accel
+              break
+              case 40: // down arrow
+                //targPitch += .025 * accel
+                if(keys[16] && renderer.cameraMode != 'fps'){
+                  targPitch += .025 * accel
+                }
+                //if(renderer.cameraMode != 'fps'){
+                  //targPitch = Math.min(1, Math.max(-1, targPitch))
+                //}
+              break
+            }
+          }
+        })
+      }
+      
+      const AxisView = () => {
+        var ret
+        const ori = (theta, comp) => {
+          while(Math.abs(comp-theta)>Math.PI){
+            theta += comp > theta ? Math.PI * 2 : -Math.PI*2
+          }
+          return Math.round((Math.atan2(S(theta), 
+                              C(theta)))*1e10)/1e10 ==
+                 Math.round(comp*1e10)/1e10
+        }
+        if(ori(targYaw, 0) &&
+           ori(targPitch, 0)) ret = 'Z'
+        if(ori(targYaw, Math.PI/2) &&
+           ori(targPitch, 0)) ret = 'X'
+        if(ori(targYaw, Math.PI) &&
+           ori(targPitch, 0)) ret = '-Z'
+        if(ori(targYaw, -Math.PI/2) &&
+           ori(targPitch, 0)) ret = '-X'
+        if(ori(targYaw, 0) &&
+           ori(targPitch, Math.PI/2)) ret = '-Y'
+        if(ori(targYaw, 0) &&
+           ori(targPitch, -Math.PI/2)) ret = 'Y'
+
+        return ret
+      }
+      
+      var misplaced = {
+        timer: 0, x: 1e5, y: 1e5, z: 1e5
+      }
+      const SpawnBlackHole = (x=0,y=0,z=0, mass=0) => {
+        if(mass){
+          blackholes[bhIdx].x = x
+          blackholes[bhIdx].y = y
+          blackholes[bhIdx].z = z
+          blackholes[bhIdx].mass = mass
+        }else{
+          if(massAvailable >= 10){
+            addingMass = true
+            blackholes[bhIdx].x = cursor.x
+            blackholes[bhIdx].y = cursor.y
+            blackholes[bhIdx].z = cursor.z
+            blackholes[bhIdx].buttonTimer = renderer.frameCount/60+.25
+            blackholes[bhIdx].mass = 10
+            massAvailable -= 10
+            holesModified = true
+            increase.pause()
+            increase.currentTime = 0
+            if(!muted) increase.play()
+            //strum.pause()
+            //strum.currentTime = 0
+            //if(!muted) strum.play()
+            
+          }else{
+            misclick.pause()
+            misclick.currentTime = 0
+            if(!muted) misclick.play()
+            misplaced.timer = renderer.frameCount/60 + 1
+            misplaced.x = cursor.x
+            misplaced.y = cursor.y
+            misplaced.z = cursor.z
+          }
+        }
+      }
+      
+      window.Launch = () => {
+        if(blackholes.filter(v=>v.x!=1e5).length ||
+             Math.hypot(ship.vx, ship.vy, ship.vz)>.01){
+          //if(!shipView) UnloadFPS()
+          if(!launched){
+            if(ship.hasThrusters){
+              missile.pause()
+              missile.currentTime = 0
+              if(!muted) missile.play()
+              engines.pause()
+              engines.currentTime = 0
+              if(!muted) engines.play()
+            }
+            flightpath = []
+            var el = shapes.filter(v=>v.name=='lines')[0]
+            for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
+            launched = true
+            ranOnce = true
+            document.querySelector('#launchButton').style.background='#800'
+            document.querySelector('#launchButton').style.color='#f88'
+            document.querySelector('#launchButton').innerHTML = 'ABORT'
+            document.querySelectorAll('.footerButton').forEach(el => {
+              if(el.id != 'launchButton') el.style.display = 'none'
+            })
+          }else{
+            LoadLevel(false)
+          }
+        }
+      }
+      
+      const AllSoundsOff = () => {
+        increase.pause()
+        alarm.pause()
+        engines.pause()
+        splode.pause()
+        splode2.pause()
+        decrease.pause()
+        destroy.pause()
+        misclick.pause()
+        strum.pause()
+        missile.pause()
+
+        increase.currentTime = 0
+        alarm.currentTime = 0
+        engines.currentTime = 0
+        splode.currentTime = 0
+        splode2.currentTime = 0
+        decrease.currentTime = 0
+        destroy.currentTime = 0
+        misclick.currentTime = 0
+        strum.currentTime = 0
+        missile.currentTime = 0
+      }
+      
+      window.ToggleMute = () => {
+        var el = document.querySelector('#muteButton')
+        muted = !muted
+        if(muted){
+          el.classList.replace('muteButton_unmuted', 'muteButton_muted')
+          AllSoundsOff()
+        }else{
+          el.classList.replace('muteButton_muted', 'muteButton_unmuted')
+        }
+        //el.style.backgroundImage = muted ? audioIcon : mutedIcon
+      }
+      
+      window.ShowHotkeys = () => {
+        var el = document.querySelector('#dialogueScreen')
+        var contents = document.querySelector('#hotkeys').cloneNode(true)
+        el.style.display = 'block'
+        el.innerHTML = ''
+        contents.style.display = 'block'
+        el.appendChild(contents)
+        modalVisible = true
+        document.querySelectorAll('.closeButton')[0].focus()
+      }
+      
+      window.ShowObjective = () => {
+        console.log('ranOnce = ', ranOnce)
+        var el = document.querySelector('#dialogueScreen')
+        var contents = document.querySelector('#currentObjective').cloneNode(true)
+        el.style.display = 'block'
+        el.innerHTML = ''
+        contents.style.display = 'block'
+        el.appendChild(contents)
+        
+        el = document.querySelector('#objectiveText')
+        el.innerHTML = objectiveText
+
+        modalVisible = true
+        document.querySelectorAll('.closeButton')[0].focus()
+      }
+      
+      const UnloadFPS = async () => {
+        renderer.cameraMode     = 'default'
+        renderer.showCrosshair  = false
+        renderer.useFPSControls = false
+        renderer.useKeys = false
+      }
+      
+      const RestoreCam = () => {
+        switch(level){
+          case -4:
+            SetShipView(true)
+            showHUD = false
+            cursorDist = 100
+            UnloadFPS()
+            //LoadFPS()
+            targYaw = renderer.yaw = 0//-Math.PI/2
+            targRoll = renderer.roll = 0
+            targPitch = renderer.pitch = 0 //-Math.PI/2
+            targX = renderer.x = 0
+            targY = renderer.y = 0
+            targZ = renderer.z = 250
+            var ap = renderer.ActualPosition()
+            cameras[0].x = ap.x
+            cameras[0].y = ap.y
+            cameras[0].z = ap.z
+            cameras[0].roll = ap.roll
+            cameras[0].pitch = ap.pitch
+            cameras[0].yaw = ap.yaw
+          break
+          default:
+            shipView = false
+            //showHUD = true
+            cursorDist = 100
+            UnloadFPS()
+            //LoadFPS()
+            targYaw = renderer.yaw = 0
+            targRoll = renderer.roll = 0
+            targPitch = renderer.pitch = 0 //-Math.PI/2
+            targX = renderer.x = 0
+            targY = renderer.y = 0
+            targZ = renderer.z = 250
+            var ap = renderer.ActualPosition()
+            cameras[0].x = ap.x
+            cameras[0].y = ap.y
+            cameras[0].z = ap.z
+            cameras[0].roll = ap.roll
+            cameras[0].pitch = ap.pitch
+            cameras[0].yaw = ap.yaw
+          break
+        }
+      }
+
+      const SetShipView = state => {
+        shipView = state
+        if(shipView && renderer.cameraMode != 'fps'){
+          LoadFPS()
+          targX = ship.x
+          targY = ship.y
+          targZ = ship.z
+          targRoll = -ship.vecRoll
+          targPitch = -ship.vecPitch
+          targYaw = -ship.vecYaw
+        }
+      }
+
+      var hasMouse = true
+      var cursorDist
+      var bhIdx, keys, keyTimers
+      var ship, shipView, addingMass
+      var launched, massAvailable, alive
+      var level, showHUD, modalVisible
+      var cameras, predictiveLength, shipSteps
+      var muted, history, historyPointer, historyTop
+      var levelComplete, buttonTimerInterval
+      var hasThrusters
+      
+      const Init = () => {
+        level = 10
+        level = Math.max(1,level)
+        flightpath = []
+        var el = shapes.filter(v=>v.name=='lines')[0]
+        for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
+        buttonTimerInterval = .25
+        history = Array(1e3).fill('')
+        historyPointer = 0
+        historyTop = 0
+        muted = false
+        predictiveLength = 400
+        modalVisible = false
+        showHUD = true
+        keys = Array(128).fill(false)
+        keyTimers = Array(128).fill(false)
+        window.onkeyup = e => {
+          if(e.keyCode == 13){
+            if(addingMass){
+              PushHistory({
+                type: 'create hole',
+                val: bhIdx,
+                redoCommand: `
+                  bhIdx = ${bhIdx};
+                  blackholes[${bhIdx}].x = ${blackholes[bhIdx].x};
+                  blackholes[${bhIdx}].y = ${blackholes[bhIdx].y};
+                  blackholes[${bhIdx}].z = ${blackholes[bhIdx].z};
+                  blackholes[${bhIdx}].ox = ${blackholes[bhIdx].ox};
+                  blackholes[${bhIdx}].oy = ${blackholes[bhIdx].oy};
+                  blackholes[${bhIdx}].oz = ${blackholes[bhIdx].oz};
+                  //blackholes[${bhIdx}].tmx = ${blackholes[bhIdx].tmx};
+                  //blackholes[${bhIdx}].tmy = ${blackholes[bhIdx].tmy};
+                  //blackholes[${bhIdx}].tmz = ${blackholes[bhIdx].tmz};
+                  blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                  blackholes[${bhIdx}].hover = false;
+                  blackholes[${bhIdx}].dragging = false;
+                  blackholes[${bhIdx}].buttonHover = false;
+                  blackholes[${bhIdx}].buttonPress = false;
+                  massAvailable -= ${blackholes[bhIdx].mass};
+                  bhIdx = ${bhIdx+1}
+                `,
+                undoCommand: `
+                  bhIdx = ${bhIdx};
+                  blackholes[${bhIdx}].x = 1e5;
+                  blackholes[${bhIdx}].y = 1e5;
+                  blackholes[${bhIdx}].z = 1e5;
+                  blackholes[${bhIdx}].ox = 1e5;
+                  blackholes[${bhIdx}].oy = 1e5;
+                  blackholes[${bhIdx}].oz = 1e5;
+                  //blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                  blackholes[${bhIdx}].hover = false;
+                  blackholes[${bhIdx}].dragging = false;
+                  blackholes[${bhIdx}].buttonHover = false;
+                  blackholes[${bhIdx}].buttonPress = false;
+                  massAvailable += ${blackholes[bhIdx].mass};
+                  //bhIdx = ${bhIdx-1}
+                `,
+              })
+              bhIdx++
+              bhIdx%=iPc
+              addingMass = false
+            }
+          }
+          keys[e.keyCode] = false
+        }
+        
+        window.onmouseup = e => {
+          blackholes.map(v=>v.button=false)
+
+          if(addingMass){
+            PushHistory({
+              type: 'create hole',
+              val: bhIdx,
+              redoCommand: `
+                bhIdx = ${bhIdx};
+                blackholes[${bhIdx}].x = ${blackholes[bhIdx].x};
+                blackholes[${bhIdx}].y = ${blackholes[bhIdx].y};
+                blackholes[${bhIdx}].z = ${blackholes[bhIdx].z};
+                blackholes[${bhIdx}].ox = ${blackholes[bhIdx].ox};
+                blackholes[${bhIdx}].oy = ${blackholes[bhIdx].oy};
+                blackholes[${bhIdx}].oz = ${blackholes[bhIdx].oz};
+                //blackholes[${bhIdx}].tmx = ${blackholes[bhIdx].tmx};
+                //blackholes[${bhIdx}].tmy = ${blackholes[bhIdx].tmy};
+                //blackholes[${bhIdx}].tmz = ${blackholes[bhIdx].tmz};
+                blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                blackholes[${bhIdx}].hover = false;
+                blackholes[${bhIdx}].dragging = false;
+                blackholes[${bhIdx}].buttonHover = false;
+                blackholes[${bhIdx}].buttonPress = false;
+                massAvailable -= ${blackholes[bhIdx].mass};
+                bhIdx = ${bhIdx+1}
+              `,
+              undoCommand: `
+                bhIdx = ${bhIdx};
+                blackholes[${bhIdx}].x = 1e5;
+                blackholes[${bhIdx}].y = 1e5;
+                blackholes[${bhIdx}].z = 1e5;
+                blackholes[${bhIdx}].ox = 1e5;
+                blackholes[${bhIdx}].oy = 1e5;
+                blackholes[${bhIdx}].oz = 1e5;
+                //blackholes[${bhIdx}].mass = ${blackholes[bhIdx].mass};
+                blackholes[${bhIdx}].hover = false;
+                blackholes[${bhIdx}].dragging = false;
+                blackholes[${bhIdx}].buttonHover = false;
+                blackholes[${bhIdx}].buttonPress = false;
+                massAvailable += ${blackholes[bhIdx].mass};
+                //bhIdx = ${bhIdx-1}
+              `,
+            })
+            bhIdx++
+            bhIdx%=iPc
+          }
+          addingMass = false
+          if((l = blackholes.filter(v=>v.dragging)).length) {
+            var mIdx
+            blackholes.forEach((v,i)=>{
+              if(v.dragging) mIdx = i
+            })
+            PushHistory({
+              type: 'move hole',
+              val: mIdx,
+              redoCommand: `
+                var mIdx = ${mIdx};
+                blackholes[mIdx].x = ${blackholes[mIdx].x};
+                blackholes[mIdx].y = ${blackholes[mIdx].y};
+                blackholes[mIdx].z = ${blackholes[mIdx].z};
+                blackholes[mIdx].ox = ${blackholes[mIdx].ox};
+                blackholes[mIdx].oy = ${blackholes[mIdx].oy};
+                blackholes[mIdx].oz = ${blackholes[mIdx].oz};
+                blackholes[mIdx].tmx = ${blackholes[mIdx].tmx};
+                blackholes[mIdx].tmy = ${blackholes[mIdx].tmy};
+                blackholes[mIdx].tmz = ${blackholes[mIdx].tmz};
+                //blackholes[mIdx].mass = ${blackholes[mIdx].mass};
+                blackholes[mIdx].hover = false;
+                blackholes[mIdx].dragging = false;
+                blackholes[mIdx].buttonHover = false;
+                blackholes[mIdx].buttonPress = false;
+              `,
+              undoCommand: `
+                var mIdx = ${mIdx};
+                blackholes[mIdx].x = ${blackholes[mIdx].ox};
+                blackholes[mIdx].y = ${blackholes[mIdx].oy};
+                blackholes[mIdx].z = ${blackholes[mIdx].oz};
+              `,
+            })
+          }
+          
+          blackholes.filter(v=>v.buttonPress!=-1).map(bh => {
+            if(bh.buttonPress == 1 || bh.buttonPress == 2){
+              PushHistory({
+                type: 'change mass',
+                val: bh.idx,
+                redoCommand: `
+                  massAvailable += blackholes[${bh.idx}].mass - ${bh.mass}
+                  blackholes[${bh.idx}].mass = ${bh.mass};
+                `,
+                undoCommand: `
+                  massAvailable += blackholes[${bh.idx}].mass - ${bh.om}
+                  blackholes[${bh.idx}].mass = ${bh.om};
+                `,
+              })
+            }
+          })
+          blackholes.map(v=>{
+            v.dragging = false
+            v.buttonPress = -1
+          })
+        }
+        
+        window.onmousemove = e => {
+          if(alive && !launched){
+            if((l = blackholes.filter(v=>v.dragging)).length) {
+              holesModified = true
+              l[0].dragging = true
+              l[0].x += cursor.x - l[0].tmx
+              l[0].y += cursor.y - l[0].tmy
+              l[0].z += cursor.z - l[0].tmz
+              l[0].tmx = cursor.x
+              l[0].tmy = cursor.y
+              l[0].tmz = cursor.z
+            }
+          }
+        }
+        
+        window.onmousedown = e => {
+          if(levelComplete){
+            level++
+            LoadLevel(true)
+          }else{
+            if(!alive){
+              LoadLevel()
+            }else{
+              if(AxisMarkersVisible() &&
+                 e.button == 0 && renderer.cameraMode != 'fps') {
+                if(alive && !launched){
+                  if((l = blackholes.filter(v=>v.hover)).length) {
+                    if(l[0].buttonHover){
+                      l[0].buttonPress = l[0].buttonHover
+                      l[0].om = l[0].mass
+                      l[0].button = true
+                      
+                      switch(l[0].buttonHover){
+                        case 1:
+                          if(l[0].mass>10){
+                            l[0].mass--
+                            massAvailable ++
+                            decrease.pause()
+                            decrease.currentTime = 0
+                            if(!muted) decrease.play()
+                          }
+                        break
+                        case 2:
+                          if(massAvailable>0){
+                            l[0].mass++
+                            massAvailable --
+                            increase.pause()
+                            increase.currentTime = 0
+                            if(!muted) increase.play()
+                          }
+                        break
+                      }
+                      
+                      
+                    }else{
+                      l[0].dragging = true
+                      l[0].tmx = cursor.x
+                      l[0].tmy = cursor.y
+                      l[0].tmz = cursor.z
+                      l[0].ox = l[0].x
+                      l[0].oy = l[0].y
+                      l[0].oz = l[0].z
+                    }
+                  }else{
+                    SpawnBlackHole()
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        window.onkeydown = e => {
+          console.log(e.keyCode)
+          
+          if(!alive && !levelComplete){
+            LoadLevel()
+           }else{
+            keys[e.keyCode] = true
+            
+            if(e.keyCode == 46){
+              var l = []
+              blackholes.forEach(v => {
+                if(v.hover) DestroyBlackhole(v)
+              })
+            }
+            
+            if(e.keyCode == 79){
+              shipView = !shipView
+              SetShipView(shipView)
+            }
+            if(e.keyCode == 67){
+              RestoreCam()
+            }
+            if(e.keyCode == 90 && keys[17]) {
+              if(keys[16]){
+                Redo()
+              }else{
+                Undo()
+              }
+            }
+            if(e.keyCode == 72) {
+              showHUD = !showHUD
+            }
+            if(e.keyCode == 32) {
+              if(levelComplete){
+                level++
+                LoadLevel(true)
+              }else{
+                if(alive){
+                  if(!launched && !modalVisible){
+                    if(shipView) {
+                      //SetShipView(false)
+                      SetShipView(true)
+                    }
+                    Launch()
+                  }else{
+                    LoadLevel()
+                  }
+                }
+              }
+            }
+            if(e.keyCode == 77){
+              if(renderer.cameraMode == 'fps'){
+                UnloadFPS()
+                targX = targY = 0
+                targZ = 20
+                renderer.cameraMode = 'default'
+              }else{
+                //LoadFPS()
+              }
+            }
+            if(e.keyCode == 13) {
+              if(!addingMass && !launched &&
+                 alive && !levelComplete && !modalVisible)
+                    SpawnBlackHole()
+            }
+          }
+          if(!keys[16]) switch(e.keyCode){
+            case 37:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
+              switch(av){
+                case 'X':
+                  targYaw -= Math.PI / 2
+                  targPitch = 0
+                break
+                case 'Y':
+                  targYaw = -Math.PI / 2
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw -= Math.PI / 2
+                  targPitch = 0
+                break
+                case '-X':  
+                  targYaw -= Math.PI / 2
+                  targPitch = 0
+                break
+                case '-Y':
+                  targYaw = Math.PI / 2
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw -= Math.PI / 2
+                  targPitch = 0
+                break
+              }
+            break
+            case 38:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
+              switch(av){
+                case 'X':
+                  targYaw = 0
+                  targPitch = -Math.PI/2
+                break
+                case 'Y':
+                  targYaw = Math.PI
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw = 0
+                  targPitch = -Math.PI / 2
+                break
+                case '-X':
+                  targYaw = 0
+                  targPitch = -Math.PI/2
+                break
+                case '-Y':
+                  targYaw = 0
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw = 0
+                  targPitch = -Math.PI/2
+                break
+              }
+            break
+            case 39:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
+              switch(av){
+                case 'X':
+                  targYaw += Math.PI / 2
+                  targPitch = 0
+                break
+                case 'Y':
+                  targYaw = -Math.PI / 2
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw += Math.PI / 2
+                  targPitch = 0
+                break
+                case '-X':
+                  targYaw += Math.PI / 2
+                  targPitch = 0
+                break
+                case '-Y':
+                  targYaw = Math.PI / 2
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw += Math.PI / 2
+                  targPitch = 0
+                break
+              }
+            break
+            case 40:
+              var av = AxisView()
+              if(!av) RestoreCam()
+              av = AxisView()
+              switch(av){
+                case 'X':
+                  targYaw = 0
+                  targPitch = Math.PI/2
+                break
+                case 'Y':
+                  targYaw = 0
+                  targPitch = 0
+                break
+                case 'Z':
+                  targYaw = 0
+                  targPitch = Math.PI / 2
+                break
+                case '-X':
+                  targYaw = 0
+                  targPitch = Math.PI/2
+                break
+                case '-Y':
+                  targYaw = Math.PI
+                  targPitch = 0
+                break
+                case '-Z':
+                  targYaw = 0
+                  targPitch = Math.PI/2
+                break
+              }
+            break
+          }
+        }
+        
+        window.onmousewheel = e => {
+          cursorDist -= e.deltaY / 25
+          cursorDist = Math.min(boundingBoxSize, 
+                         Math.max(-boundingBoxSize, cursorDist))
+        }
+        window.onmouseout = () => {
+          hasMouse = false
+        }
+        window.onmouseover = () => {
+          hasMouse = true
+        }
+        
+        cameras = [
+          {
+            x: 0,
+            y: 0,
+            z: 0,
+            roll: 0,
+            pitch: 0,
+            yaw: 0,
+          },
+        ]
+      }
+      Init()
+      
+      var blackholesCopy
+      const InitBlackHoles = () => {
+        if(typeof blackholes != 'undefined' &&
+           blackholes.filter(v=>v.x!=1e5).length){
+          blackholesCopy = structuredClone(blackholes)
+          PushHistory({
+            type: 'init holes',
+            val: bhIdx,
+            redoCommand: `
+              holesModified = true
+              blackholes = Array(iPc).fill().map((v, i) => {
+                x = 1e5
+                y = 1e5
+                z = 1e5
+                return { x, y, z, mass: 10, idx: i,
+                         ox: 0, oy: 0, oz: 0,
+                         tmx: 0, tmy: 0, tmz: 0,
+                         buttonPress: -1,
+                         hover: false,
+                         buttonTimer: 0,
+                         button: false,
+                         dragging: false,
+                         buttonHover: false}
+              })
+            `,
+            undoCommand: `
+              massAvailable = ${massAvailable}
+              blackholes = structuredClone(blackholesCopy)
+            `,
+          })
+        }
+        flightpath = []
+        var el = shapes.filter(v=>v.name=='lines')[0]
+        for(var i=0; i<el.vertices.length; i++) el.vertices[i]=1e5
+        holesModified = true
+        blackholes = Array(iPc).fill().map((v, i) => {
+          x = 1e5
+          y = 1e5
+          z = 1e5
+          return { x, y, z, mass: 10, idx: i,
+                   ox: 0, oy: 0, oz: 0,
+                   tmx: 0, tmy: 0, tmz: 0,
+                   buttonPress: -1,
+                   buttonTimer: 0,
+                   button: false,
+                   hover: false,
+                   dragging: false,
+                   buttonHover: false}
+        })
+        switch(level){
+          case 4: // some levels have no blackholes
+          break
+          default:
+            var total = 0
+            blackholes.map((bh, bIdx) => {
+              if(bh.x != 1e5) total+=bh.mass
+            })
+            massAvailable = 100 - total
+          break
+        }
+      }
+      
+      const SetRefTexture = (texture, bgLighting=.75) => {
+        shapes.map(shape => {
+          if(shape.map == refTexture) {
+            shape.map = texture
+            shape.rebindTextures = true
+          }
+          shape.shader.datasets.map(ds=>{
+            if(ds.iURL == refTexture) {
+              ds.iURL = texture
+            }
+            if(typeof ds.optionalUniforms != 'undefined'){
+              if(shape.name == 'background'){
+                ds.optionalLighting.map(u => {
+                  u.value = bgLighting
+                })
+              }
+              ds.optionalUniforms.map(u => {
+                if(u.map == refTexture) {
+                  u.map = texture
+                  u.rebindTextures = true
+                }
+              })
+            }
+          })
+        })
+        refTexture = texture
+      }
+      
+      var levelName
+      var levelNameEl = document.querySelector("#levelName")
+      var massEl = document.querySelector("#massMeter")
+      var massNumericEl = document.querySelector("#massNumeric")
+      var holeCountEl = document.querySelector("#holeCount")
+      var blackholes, screenAlpha, flightpath, ranOnce
+      var holesModified, stage, spinTheta, objectiveText
+      var planets = []
+      var targX
+      var targY
+      var targZ
+      var targRoll
+      var targPitch
+      var targYaw
+      var levelMazeIdx
+      var levelObstacleIdx
+      
+      const LoadLevel = (initBlackHoles=false) => {
+      
+        var initShipX, initShipY, initShipZ
+        var initShipVx, initShipVy, initShipVz
+
+        document.querySelector('#launchButton').style.background='#f80'
+        document.querySelector('#launchButton').style.color='#fff'
+        document.querySelector('#launchButton').innerHTML = 'LAUNCH'
+        document.querySelectorAll('.footerButton').forEach(el => {
+          el.style.display = 'inline-block'
+        })
+        AllSoundsOff()
+
+        smoke = []
+        particles = []
+        window.hovering = false
+        holesModified = false
+        if(initBlackHoles){
+          bhIdx = 0
+          InitBlackHoles()
+          ranOnce = false
+        }
+        var shipShape = shapes.filter(v=>v.name == 'ship')[0]
+        shipShape.x = 0
+        shipShape.y = 0
+        shipShape.z = 0
+        shipShape.roll = 0
+        shipShape.pitch = 0
+        shipShape.yaw = Math.PI
+        screenAlpha = 0
+        
+        shipSteps = 2
+        
+        //SpawnBlackHole(0,20,0,5)
+        //bhIdx++
+        //bhIdx%=iPc
+        
+        renderer.useKeys = false
+        alive = true
+        addingMass = false
+        levelComplete = false
+        spinTheta = 0
+        targets = []
+        
+        switch(level) {
+
+//////////////////////////////
+//         LEVEL 1          //
+//////////////////////////////
+          case 1:
+            levelName =  `${level} - INTRO`
+            stage = 0
+            SpawnTarget(100, 100, 0)
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            levelMazeIdx = -1
+            levelObstacleIdx = -1
+            //massAvailable = 100
+            launched = false
+            
+            showBackground = true
+            showCubeGrid = true
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+            objectiveText = 
+`
+<img
+                         src="${hp3dLogo}"
+                         class="logo"
+                         style=""
+                        /> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+style="color: #0f4; font-size: 1.5em;"
+><div style="text-align: left; margin-left: 50px">
+PLACE BLACK HOLES TO ALTER
+THE SHIP'S COURSE.
+FLY THE SHIP INTO THE TARGET <div class="specialArrow">&#10136;</div><img
+                     src="${targetImgURL}"
+                     class="objImg"
+                     style="float: right;"
+                    /></div></span>
+<div style="text-align: left;">
+
+            SPACE   :  launch ship
+            ARROWS  :  rotate view
+                 O  :  ship-cam view
+                 H  :  toggle HUD (in ship-camera mode)
+                 C  :  reset camera to default
+               ESC  :  close this window
+</div>`
+          break
+          
+
+//////////////////////////////
+//         LEVEL 2          //
+//////////////////////////////
+          case 2:
+            levelName = `${level} - CHANGE VIEWS`
+            stage = 0
+            SpawnTarget(50, 0, -75)
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            levelMazeIdx = -1
+            levelObstacleIdx = -1
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://srmcgann.github.io/skyboxes2/HDRI/milkyWay.jpg')
+            
+            showBackground = true
+            showCubeGrid = true
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+                         src="${hp3dLogo}"
+                         class="logo"
+                         style=""
+                        /> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;"
+>              
+THE TARGET HAS MOVED!
+USE THE ARROW KEYS TO ROTATE THE VIEW
+<img
+ src="${arrowKeys}"
+ class="objImg"
+ style="width: 150px;"
+/></span>
+<div style="text-align: left;margin-top: -10px;">
+                SPACE   :  launch ship
+                ARROWS  :  rotate view
+                     O  :  ship-cam view
+                     H  :  toggle HUD (in ship-camera mode)
+                     C  :  reset camera to default
+                   ESC  :  close this window
+</div>`
+
+          break
+
+//////////////////////////////
+//         LEVEL 3          //
+//////////////////////////////
+          case 3:
+            levelName =  `${level} - AVOID THE OBSTACLE`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = -1
+            levelObstacleIdx = -1
+            var ls = 120
+            planets.push(
+              {
+                x: 0,
+                y: 0,
+                z: 0,
+                size: ls/5,
+              }
+            )
+            var sd = 0
+            for(var i = 0; i < sd; i++){
+              planets.push(
+                {
+                  x: 0,
+                  y: S(p=Math.PI*2/sd*i) * ls*1.5,
+                  z: C(p) * ls*1.5,
+                  size: ls/20,
+                }
+              )
+            }
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            
+            SetRefTexture('https://srmcgann.github.io/skyboxes2/HDRI/nebula.jpg')
+            
+            showBackground = true
+            showCubeGrid = true
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;">AVOID THE OBSTACLE!
+
+<img
+           src="${obstacleImg}"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          /></span>
+`
+
+          break
+          
+//////////////////////////////
+//         LEVEL 4          //
+//////////////////////////////
+          case 4:
+            levelName =  `${level} - TIMING IS EVERYTHING`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = -1
+            levelObstacleIdx = 0
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 0
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/pinkCluds.jpg')
+            
+            showBackground = true
+            showCubeGrid = false
+            initShipVx = 1.75
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;">DON'T GET BLOCKED<br>TIMING MATTERS!
+<img
+           src="https://srmcgann.github.io/holepunch3D/level4.png"
+           class="objImg"
+           style="width:443px;margin-top:15px;"
+          /></span>
+`
+
+          break
+          
+//////////////////////////////
+//         LEVEL 5          //
+//////////////////////////////
+          case 5:
+            levelName = `${level} - some passeges are narrow`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 0
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/spacemaze1.jpg',.5)
+            
+            showBackground = true
+            showCubeGrid = false
+            hasThrusters = true
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THE PASSAGE
+
+<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example1.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          /></span>
+`
+
+          break
+          
+//////////////////////////////
+//         LEVEL 6          //
+//////////////////////////////
+          case 6:
+            levelName = `${level} - navigate the passage`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 1
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/quickgrid.png',.25)
+            
+            showBackground = true
+            showCubeGrid = false
+            initShipVx = 1
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+<span
+  style="color: #0f4; font-size: 1.5em;">SOME PASSAGES ARE NOT DIRECT
+
+<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          /></span>
+`
+
+          break
+
+//////////////////////////////
+//         LEVEL 7          //
+//////////////////////////////
+          case 7:
+            levelName = `${level} - USE GRAVITY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = -1
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/28.jpg')
+            
+            showBackground = true
+            showCubeGrid = true
+            initShipVx = .000001
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">YOUR THRUSTERS ARE OFFLINE<br>YOU MUST USE GRAVITY FOR PROPULSION
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
+          break
+
+//////////////////////////////
+//         LEVEL 8          //
+//////////////////////////////
+          case 8:
+            levelName = `${level} - USE GRAVITY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 2
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/space4.jpg')
+            
+            showBackground = true
+            showCubeGrid = true
+            initShipVx = .000001
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">YOUR THRUSTERS ARE STILL OFFLINE<br>YOU MUST USE GRAVITY FOR PROPULSION!
+  
+  
+  NAVIGATE THE DEBRIS FIELD.....
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
+          break
+          
+//////////////////////////////
+//         LEVEL 9          //
+//////////////////////////////
+          case 9:
+            levelName = `${level} - FLY CAREFULLY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 3
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/stars.jpg',1)
+            
+            showBackground = true
+            showCubeGrid = false
+            initShipVx = .5 
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THROUGH THE MAZE
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
+          break          
+//////////////////////////////
+//         LEVEL 10          //
+//////////////////////////////
+          case 10:
+            levelName = `${level} - FLY CAREFULLY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 4
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            SetRefTexture('https://skyboxes2.verymad.net/images/stars.jpg',1)
+            
+            showBackground = true
+            showCubeGrid = false
+            initShipVx = .5 
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THROUGH THE MAZE
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
+          break
+          
+        }
+        if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
+          RestoreCam()
+        }
+        
+        ship = {
+          x: initShipX,
+          y: initShipY,
+          z: initShipZ,
+          vx: initShipVx,
+          vy: initShipVy,
+          vz: initShipVz,
+          hasThrusters,
+          vecx: 0,
+          vecy: 0,
+          vecz: 0,
+          vecRoll: 0,
+          vecPitch: -Math.acos(-initShipVy /
+                          (Math.hypot(initShipVx,
+                           initShipVy,
+                           initShipVz))+.0001) + Math.PI/2,
+          vecYaw: Math.atan2(initShipVx, initShipVz)+Math.PI,
+        }
+
+        var shipShape = shapes.filter(v=>v.name=='ship')[0]
+        shipShape.x = ship.x
+        shipShape.y = ship.y
+        shipShape.z = ship.z
+        shipShape.yaw = ship.vecYaw
+        shipShape.pitch = ship.vecPitch
+        shipShape.roll = ship.vecRoll
+        
+        levelNameEl.innerHTML = levelName
+      }
+      LoadLevel(true)
+      
+      window.CloseModal = () => {
+        var el = document.querySelector('#dialogueScreen')
+        el.innerHTML = ''
+        el.style.display = 'none'
+        modalVisible = false
+        if(!ranOnce)stage++
+      }
+      
+      const AxisMarkersVisible = () => {
+        return !window.hovering &&  !modalVisible &&
+          !document.pointerLockElement && alive &&
+            !levelComplete && !launched
+      }
+
+      var mx, my
+      const ProcessScratchCanvas = () => {
+      
+        ctx.clearRect(0,0,w,h)
+        if(hasMouse){
+          
+          mx = renderer.mouseX
+          my = renderer.mouseY
+          /*ctx.fillStyle= '#f00'
+          var s = 10
+          ctx.fillRect(mx-s/2,my-s/2,s,s)
+          */
+          
+          
+          if(AxisMarkersVisible()){
+            var axis = AxisView()
+            var rx, ry, rz, poly, ar
+            var ap = renderer.ActualPosition()
+            d = axis ? Math.hypot(ap.x, ap.y, ap.z) : cursorDist * 1.1111111
+            var fac = 2.5 / d * 200
+            var vx = (mx-w/2)/fac
+            var vy = -(my-h/2)/fac
+            var vz = 0
+            var x1, y1, z1, x2, y2, z2
+            var bbs = boundingBoxSize
+            switch(axis){
+              case 'X': case '-X':
+                x1 = ap.z
+                y1 = ap.y
+                z1 = ap.x
+                x2 = x1 + (vx - x1) * 100
+                y2 = y1 + (vy - y1) * 100
+                z2 = z1 + (vz - z1) * 100
+                poly = [
+                  [-boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, boundingBoxSize, 0],
+                  [-boundingBoxSize, boundingBoxSize, 0],
+                ]
+                ar=Coordinates.PointInPoly3D(x1, y1, z1,
+                                             x2, y2, z2,
+                                             poly)
+              break
+              case 'Y': case '-Y':
+                x1 = ap.x
+                y1 = ap.z
+                z1 = ap.y
+                x2 = x1 + (vx - x1) * 100
+                y2 = y1 + (vy - y1) * 100
+                z2 = z1 + (vz - z1) * 100
+                poly = [
+                  [-boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, boundingBoxSize, 0],
+                  [-boundingBoxSize, boundingBoxSize, 0],
+                ]
+                ar=Coordinates.PointInPoly3D(x1, y1, z1,
+                                             x2, y2, z2,
+                                             poly)
+              break
+              case 'Z': case '-Z':
+                x1 = ap.x
+                y1 = ap.y
+                z1 = ap.z
+                x2 = x1 + (vx - x1) * 100
+                y2 = y1 + (vy - y1) * 100
+                z2 = z1 + (vz - z1) * 100
+                poly = [
+                  [-boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, -boundingBoxSize, 0],
+                  [boundingBoxSize, boundingBoxSize, 0],
+                  [-boundingBoxSize, boundingBoxSize, 0],
+                ]
+                ar=Coordinates.PointInPoly3D(x1, y1, z1,
+                                             x2, y2, z2,
+                                             poly)
+              break
+              default:
+                ar = ''
+                x2 = vx
+                y2 = vy
+                z2 = cursorDist
+                
+                p = Math.atan2(y2,z2) + ap.pitch
+                d = Math.hypot(y2,z2)
+                y2 = S(p) * d
+                z2 = C(p) * d
+                p = Math.atan2(x2,z2) + ap.yaw
+                d = Math.hypot(x2,z2)
+                x2 = S(p) * d
+                z2 = C(p) * d
+                cursor.x = x2 + ap.x
+                cursor.y = y2 + ap.y
+                cursor.z = z2 + ap.z
+              break            
+            }
+            if(ar){
+              x = ar[0][0]
+              y = ar[0][1]
+              z = ar[0][2]
+              p = Math.atan2(y,z) + ap.pitch
+              d = Math.hypot(y,z)
+              y = S(p) * d
+              z = C(p) * d
+              p = Math.atan2(x,z) + ap.yaw
+              d = Math.hypot(x,z)
+              x = S(p) * d
+              z = C(p) * d
+              cursor.x = x
+              cursor.y = y
+              cursor.z = z
+            }
+            
+            cursor.x = Math.min(boundingBoxSize, Math.max(-boundingBoxSize, cursor.x))
+            cursor.y = Math.min(boundingBoxSize, Math.max(-boundingBoxSize, cursor.y))
+            cursor.z = Math.min(boundingBoxSize, Math.max(-boundingBoxSize, cursor.z))
+            
+            /*
+            var shape = shapes.filter(v=>v.name == 'test marker')
+            if(shape.length){
+              var rx = 0
+              var ry = 0
+              var rz = targZ/(1+fac)
+              p = Math.atan2(ry, rz) - targPitch
+              d = Math.hypot(ry, rz)
+              ry = S(p) * d
+              rz = C(p) * d
+              p = Math.atan2(rx, rz) + targYaw
+              d = Math.hypot(rx, rz)
+              rx = S(p) * d
+              rz = C(p) * d
+
+              shape = shape[0]
+              shape.x = rx
+              shape.y = ry
+              shape.z = rz
+              shape.pitch = targPitch
+              shape.yaw = -targYaw
+            }
+            */
+          }
+        }
+      }
+      
+      const BlackholeFunc = (x1, y1, z1, vx, vy, vz) => {
+          var d_, collision = false
+          blackholes.forEach((v, i) => {
+            if(v.x != 1e5){
+              var dx1 = (v.x - x1) 
+              var dy1 = (v.y - y1) 
+              var dz1 = (v.z - z1) 
+              d = (d_=Math.hypot(dx1, dy1, dz1)) ** 3
+              vx += dx1 / d * grav * v.mass
+              vy += dy1 / d * grav * v.mass
+              vz += dz1 / d * grav * v.mass
+              if(d_ < v.mass/8) collision = true
+            }
+          })
+          return { x1, y1, z1, vx, vy, vz, collision }
+      }
+      
+      window.Reset = () => {
+        if(!launched) InitBlackHoles()
+      }
+      
+      const PushHistory = event => {
+        history[historyPointer++] = event
+        if(historyPointer > history.length-1) history.shift()
+        historyTop = historyPointer
+      }
+      
+      window.Redo = () => {
+        if(historyPointer >= historyTop) return
+        if(!launched && historyPointer < history.length) {
+          var command = history[historyPointer++].redoCommand
+          eval(command)
+        }
+      }
+      
+      window.Undo = () => {
+        if(!launched && historyPointer > 0) {
+          eval(history[--historyPointer].undoCommand)
+        }
+      }
+      
+      Coordinates.Overlay.fit = 'cover'
+      Coordinates.Overlay.Resize()
+      
+      const DestroyBlackhole = bh => {
+
+        PushHistory({
+          type: 'destroy hole',
+          val: bhIdx,
+          redoCommand: `
+            var tIdx = ${bh.idx};
+            blackholes[tIdx].x = 1e5;
+            blackholes[tIdx].y = 1e5;
+            blackholes[tIdx].z = 1e5;
+            blackholes[tIdx].ox = 1e5;
+            blackholes[tIdx].oy = 1e5;
+            blackholes[tIdx].oz = 1e5;
+            blackholes[tIdx].mass = 10;
+            blackholes[tIdx].hover = false;
+            blackholes[tIdx].dragging = false;
+            blackholes[tIdx].buttonHover = false;
+            blackholes[tIdx].buttonPress = false;
+            massAvailable += ${bh.mass};
+          `,
+          undoCommand: `
+            var tIdx = ${bh.idx};
+            blackholes[tIdx].x = ${bh.x};
+            blackholes[tIdx].y = ${bh.y};
+            blackholes[tIdx].z = ${bh.z};
+            blackholes[tIdx].ox = ${bh.ox};
+            blackholes[tIdx].oy = ${bh.oy};
+            blackholes[tIdx].oz = ${bh.oz};
+            blackholes[tIdx].mass = ${bh.mass};
+            blackholes[tIdx].hover = false;
+            blackholes[tIdx].dragging = false;
+            blackholes[tIdx].buttonHover = false;
+            blackholes[tIdx].buttonPress = false;
+            massAvailable -= ${bh.mass};
+            
+            //DestroyBlackhole(blackholes.filter((v,i)=>i==${bhIdx})[0]);
+            `,
+        })
+
+
+        massAvailable += bh.mass
+        bh.x = 1e5
+        bh.y = 1e5
+        bh.z = 1e5
+        bh.tmx = 0
+        bh.tmy = 0
+        bh.tmz = 0
+        bh.buttonPress = -1
+        bh.hover = false
+        bh.dragging = false
+        bh.buttonHover = false
+      }
+      
+      var homing = 100
+      var drag = 4
+      var grav = .4
+      window.Draw = () => {
+        var t = renderer.frameCount/60
+        
+        DoKeys()
+        ProcessScratchCanvas()
+        
+        if(renderer.cameraMode == 'fps'){
+          if(window.hovering ||
+             blackholes.filter(v=>v.hover).length){
+            renderer.useKeys = false
+          }else{
+            renderer.useKeys = true
+          }
+        }else{
+          if(launched && alive){
+            switch(AxisView()){
+              case 'X':
+                targX += (-ship.z - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32+ship.x+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
+              break
+              case 'Y':
+                targX += (-ship.x - targX) / 5
+                targY += (-ship.z - targY) / 5
+                targZ += (32+ship.y+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
+                               targZ) / 8
+              break
+              case 'Z':
+                targX += (-ship.x - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32-ship.z+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
+              break
+              case '-X':
+                targX += (ship.z - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32-ship.x+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
+              break
+              case '-Y':
+                targX += (-ship.x - targX) / 5
+                targY += (ship.z - targY) / 5
+                targZ += (32-ship.y+Math.hypot(ship.vx,ship.vy,ship.vz)*64 -
+                               targZ) / 8
+              break
+              case '-Z':
+                targX += (ship.x - targX) / 5
+                targY += (-ship.y - targY) / 5
+                targZ += ((32+ship.z+Math.hypot(ship.vx,ship.vy,ship.vz)*64) -
+                               targZ) / 8
+              break
+            }
+          }
+        }
+        
+        if(!launched){
+          switch(stage){
+            case 0:
+              if(!modalVisible && !ranOnce){
+                ShowObjective()
+              }
+            break
+            case 1:
+              if(!ranOnce && spinTheta<Math.PI*2){
+                spinTheta += .2
+              }else{
+                spinTheta = 0
+                if(!ranOnce) renderer.yaw -= Math.PI*2
+                //targYaw -= Math.PI*2
+                stage++
+              }
+            break
+          }
+        }else{
+          if(levelComplete){
+            spinTheta += .01
+          }else{
+            spinTheta = 0
+          }
+        }
+        
+        while(Math.abs(targPitch) > Math.PI){
+          if(targPitch < 0){
+            targPitch += Math.PI * 2
+            renderer.pitch += Math.PI * 2
+          }else{
+            targPitch -= Math.PI * 2
+            renderer.pitch -= Math.PI * 2
+          }
+        }
+        
+        while(Math.abs(targYaw) > Math.PI){
+          if(targYaw < 0){
+            targYaw += Math.PI * 2
+            renderer.yaw += Math.PI * 2
+          }else{
+            targYaw -= Math.PI * 2
+            renderer.yaw -= Math.PI * 2
+          }
+        }
+        
+        renderer.x += (targX - renderer.x) / 3
+        renderer.y += (targY - renderer.y) / 3
+        renderer.z += (targZ - renderer.z) / 3
+        renderer.roll += (targRoll - renderer.roll) / 3
+        renderer.pitch += (targPitch - renderer.pitch) / 3
+        renderer.yaw += ((targYaw + spinTheta) - renderer.yaw) / 3
+        
+        
+        levelNameEl.innerHTML = levelName + ('.').repeat((t*6|0)%6)
+        massEl.innerHTML =('▐').repeat(massAvailable/4)
+        massNumericEl.innerHTML = Math.round(massAvailable)
+        holeCountEl.innerHTML = blackholes.filter(v=>v.x != 1e5).length
+        
+        if(0 && !(renderer.frameCount%10)){
+          var tx, ty, tz
+          for(var i = 0; i < particles.length; i ++){
+            var p1 = particles[i]
+            var p2 = particles[(i+1)%particles.length]
+            
+            if(!i){
+              tx = p1.ox
+              ty = p1.oy
+              tz = p1.oz
+            }
+            if(i < particles.length - 1){
+              p1.ox = p2.ox
+              p1.oy = p2.oy
+              p1.oz = p2.oz
+            }else{
+              p1.ox = tx
+              p1.oy = ty
+              p1.oz = tz
+            }
+            
+          }
+        }
+        
+        if(shipView && showHUD){
+          Coordinates.Overlay.ctx.globalAlpha = alive ? .5 : screenAlpha
+          Coordinates.Overlay.ctx.clearRect(0,0,w,h)
+          Coordinates.Overlay.ctx.drawImage(alive ? HUD : HUD_dead,0,0,w,h)
+          Coordinates.Overlay.ctx.globalAlpha = 1
+        }
+        if(levelComplete){
+          screenAlpha += .033
+          screenAlpha = Math.min(.975, screenAlpha)
+          Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
+          Coordinates.Overlay.ctx.drawImage(victoryScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
+        }else{
+          if(!alive){
+            screenAlpha += .01
+            screenAlpha = Math.min(.975, screenAlpha)
+            Coordinates.Overlay.ctx.globalAlpha = screenAlpha**2
+            Coordinates.Overlay.ctx.drawImage(deathScreen, w/2-w/2,h/2-h/2-25,w/1,h/1)
+          }
+          Coordinates.Overlay.ctx.globalAlpha = 1
+        }
+
+        //Coordinates.Overlay.ctx.drawImage(renderer.c, w-w/4, h/2-h/8, w/4, h/4)
+        renderer.Clear()
+        shapes.forEach(shape => {
+          switch(shape.name){
+            case 'background':
+              if(showBackground){
+                shape.x = -targX
+                shape.y = -targY
+                shape.z = -targZ
+                //shape.color = 0xffffff
+                //shape.colorMix = 1
+                renderer.Draw(shape)
+              }
+            break
+            case 'smoke particles':
+              var colors = shape.shader.datasets[0].optionalAttributes[0].value
+              for(var i = 0; i < shape.vertices.length; i += 3){
+                var idx = i/3
+                if(idx < smoke.length){
+                  shape.vertices[i+0] = smoke[idx].x += smoke[idx].vx
+                  shape.vertices[i+1] = smoke[idx].y += smoke[idx].vy
+                  shape.vertices[i+2] = smoke[idx].z += smoke[idx].vz
+                  smoke[idx].life -= .005
+                  
+                  var cIdx = i/3*4
+                  var rgb = Coordinates.HSVToRGB(360/smoke.length*(smoke.length-idx)*.2,1,1)
+                  colors[cIdx+0] = rgb[0] / 256
+                  colors[cIdx+1] = rgb[1] / 256
+                  colors[cIdx+2] = rgb[2] / 256
+                  colors[cIdx+3] = .2 / smoke.length * idx
+                }else{
+                  shape.vertices[i+0] = 1e5
+                  shape.vertices[i+1] = 1e5
+                  shape.vertices[i+2] = 1e5
+                }
+              }
+              smoke = smoke.filter((v, i) =>v.life>0 && smoke.length-iSmokec)
+              renderer.Draw(shape)
+            break
+            case 'planet':
+              if(planets.length){
+                shape.shapeData.map((subShape, sIdx) => {
+                  if(sIdx < planets.length){
+                    var pl = planets[sIdx]
+                    
+                    p = Math.atan2(pl.y, pl.z) + .01
+                    d = Math.hypot(pl.y, pl.z)
+                    pl.x = sIdx ? S(Math.PI*8/(planets.length-1)*sIdx)*20*C(t) : 0
+                    pl.y = S(p) * d
+                    pl.z = C(p) * d
+                    
+                    subShape.x = pl.x - subShape.ox
+                    subShape.y = pl.y - subShape.oy
+                    subShape.z = pl.z - subShape.oz
+                    for(var i = 0; i < shape.stride; i += 3){
+                      var idx = i + sIdx * shape.stride
+                      x = basePlanetVerts[i+0] * pl.size + subShape.ox
+                      y = basePlanetVerts[i+1] * pl.size + subShape.oy
+                      z = basePlanetVerts[i+2] * pl.size + subShape.oz
+                      shape.vstate[idx+0] = x
+                      shape.vstate[idx+1] = y
+                      shape.vstate[idx+2] = z
+                    }
+                  }else{
+                    subShape.x = 0
+                    subShape.y = 0
+                    subShape.z = 0
+                  }
+                })
+                renderer.Draw(shape)
+              }
+            break
+            case 'particles':
+              particles = particles.filter(v=>v.life > 0)
+              var colors = shape.shader.datasets[0].optionalAttributes[0].value
+              for(var i = 0; i < shape.vertices.length; i +=3){
+                var idx = i/3
+                var pDrag = 1.05
+                if(idx < particles.length){
+                  var pt = particles[idx]
+                  pt.life -= .001
+                  shape.vertices[i+0] = pt.x += pt.vx /= pDrag
+                  shape.vertices[i+1] = pt.y += pt.vy /= pDrag
+                  shape.vertices[i+2] = pt.z += pt.vz /= pDrag
+                  var cIdx = i/3*4
+                  d = Math.hypot(pt.vx, pt.vy, pt.vz)
+                  var rgb = Coordinates.HSVToRGB(d**.5*30, .5+Math.min(1,d**.5*2),
+                                                        Math.min(1,d**.5*4))
+                  colors[cIdx+0] = rgb[0] / 256
+                  colors[cIdx+1] = rgb[1] / 256
+                  colors[cIdx+2] = rgb[2] / 256
+                  colors[cIdx+3] = pt.life ** .5
+                }else{
+                  shape.vertices[i+0] = 1e5
+                  shape.vertices[i+1] = 1e5
+                  shape.vertices[i+2] = 1e5
+                }
+              }
+              renderer.Draw(shape)
+            break
+            case 'blackhole':
+              if(addingMass && !launched && alive){
+                if(massAvailable > 0 && blackholes[bhIdx].buttonTimer < t) {
+                  increase.pause()
+                  increase.currentTime = 0
+                  if(!muted) increase.play()
+                  massAvailable -= 1
+                  blackholes[bhIdx].mass += 1
+                }
+              }
+              var disk = shapes.filter(v=>v.name =='blackhole disk')[0]
+              for(var i = 0; i < disk.vertices.length; i += disk.stride){
+                var sIdx = i/disk.stride
+                var el = blackholes[i/disk.stride]
+                if(el.x != 1e5){
+                  var subShape = disk.shapeData[sIdx]
+                  var ox = subShape.ox
+                  var oy = subShape.oy
+                  var oz = subShape.oz
+                  var ls = 1+(el.mass + 1) / 25
+                  for(var j = 0; j < disk.stride; j +=3){
+                    var idx = i + j
+                    x = disk.vstate[idx+0] = blackholeDiskVerts[j+0] * ls + ox
+                    y = disk.vstate[idx+1] = blackholeDiskVerts[j+1] * ls + oy
+                    z = disk.vstate[idx+2] = blackholeDiskVerts[j+2] * ls + oz
+                  }
+                }
+              }
+
+              for(var i = 0; i < shape.vertices.length; i += shape.stride){
+                var sIdx = i/shape.stride
+                var el = blackholes[i/shape.stride]
+                if(el.x != 1e5){
+                  var subShape = shape.shapeData[sIdx]
+                  var ox = subShape.ox
+                  var oy = subShape.oy
+                  var oz = subShape.oz
+                  var ls = 1+(el.mass + 1) / 25
+                  for(var j = 0; j < shape.stride; j +=3){
+                    var idx = i + j
+                    x = shape.vstate[idx+0] = blackholeVerts[j+0] * ls + ox
+                    y = shape.vstate[idx+1] = blackholeVerts[j+1] * ls + oy
+                    z = shape.vstate[idx+2] = blackholeVerts[j+2] * ls + oz
+                  }
+                }
+              }
+              shape.shapeData.map((subShape, sIdx) => {
+                x = blackholes[sIdx].x
+                y = blackholes[sIdx].y
+                z = blackholes[sIdx].z
+                subShape.x = x - subShape.ox
+                subShape.y = y - subShape.oy
+                subShape.z = z - subShape.oz
+                
+                if(alive && !launched && !addingMass){
+                  if(blackholes[sIdx].hover){
+                    var ar = Coordinates.GetShaderCoord(
+                      x + shape.x, y+shape.y, z+shape.z,{
+                      x:0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0,
+                    }, renderer)
+                    if(ar){
+                      var bh = blackholes[sIdx]
+                      bh.buttonHover = 0
+                      var ctx = Coordinates.Overlay.ctx
+                      ctx.textAlign = 'center'
+                      ctx.fillStyle = '#0ffb'
+                      ctx.strokeStyle = '#000b'
+                      var fs = 2.75 * (10+bh.mass/2.75)
+                      ctx.font = fs + 'px Play'
+                      ctx.lineWidth = 3
+                      ctx.strokeText('[  ]', ar[0], ar[1] + fs/3.75)
+                      ctx.fillText('[  ]', ar[0], ar[1] + fs/3.75)
+                      var fs2 = 32
+                      ctx.font = fs2 + 'px Play'
+                      ctx.strokeText(`mass ${bh.mass}`,
+                            x = ar[0], y = ar[1] + fs/2 + fs2)
+                      ctx.fillText(`mass ${bh.mass}`,
+                            x = ar[0], y = ar[1] + fs/2 + fs2)
+                      ctx.fillStyle = '#f808'
+                      var s = 50
+                      ctx.drawImage(decButton, x-s/2 - 100, y-s/2, s, s)
+                      ctx.drawImage(incButton, x-s/2 + 100, y-s/2, s, s)
+                      ctx.drawImage(delButton, x-s/2 + 0, ar[1]-bh.mass/2-80,
+                                                s, s)
+
+                      s = bh.mass
+                      Coordinates.Overlay.ctx.fillStyle = '#0f08'
+                      var x1 = ar[0]-100-25
+                      var y1 = ar[1]+s/2-5+25
+                      var x2 = x1 + 50
+                      var y2 = y1 + 50
+                      if(mx>x1 && mx<x2 && my>y1 && my<y2){
+                        bh.buttonHover = 1
+                        document.querySelectorAll('canvas').forEach(el=>{
+                          el.style.cursor = 'pointer'
+                        })
+                      }
+                      var x1 = ar[0]+100-25
+                      var y1 = ar[1]+s/2-5+25
+                      var x2 = x1 + 50
+                      var y2 = y1 + 50
+                      if(mx>x1 && mx<x2 && my>y1 && my<y2){
+                        bh.buttonHover = 2
+                        document.querySelectorAll('canvas').forEach(el=>{
+                          el.style.cursor = 'pointer'
+                        })
+                      }
+                      var x1 = ar[0]+0-25
+                      var y1 = ar[1]-s/2-80
+                      var x2 = x1 + 50
+                      var y2 = y1 + 50
+                      if(mx>x1 && mx<x2 && my>y1 && my<y2){
+                        bh.buttonHover = 3
+                        document.querySelectorAll('canvas').forEach(el=>{
+                          el.style.cursor = 'pointer'
+                        })
+                      }
+                      if(bh.buttonPress != -1){
+                        holesModified = true
+                        switch(bh.buttonPress){
+                          case 1:
+                            if(bh.buttonTimer < t){
+                              if(bh.mass > 10){
+                                decrease.pause()
+                                decrease.currentTime = 0
+                                if(!muted) decrease.play()
+                                bh.mass--
+                                massAvailable ++
+                              }else{
+                                bh.buttonTimer = t + buttonTimerInterval
+                                misclick.pause()
+                                misclick.currentTime = 0
+                                if(!muted) misclick.play()
+                              }
+                            }
+                          break
+                          case 2:
+                            if(bh.buttonTimer < t){
+                              if(massAvailable > 0){
+                                increase.pause()
+                                increase.currentTime = 0
+                                if(!muted) increase.play()
+                                bh.mass++
+                                massAvailable --
+                              }else{
+                                bh.buttonTimer = t + buttonTimerInterval
+                                misclick.pause()
+                                misclick.currentTime = 0
+                                if(!muted) misclick.play()
+                              }
+                            }
+                          break
+                          case 3:
+                            destroy.pause()
+                            destroy.currentTime = 0
+                            if(!muted) destroy.play()
+                            var bh = blackholes.filter(v=>v.buttonPress==3)[0]
+                            DestroyBlackhole(bh)
+                          break
+                        }
+                      }
+                      /*
+                      Coordinates.Overlay.ctx.fillRect(
+                                 ar[0]-100-25, ar[1]+s/2-5+25,50,50)
+                      Coordinates.Overlay.ctx.fillRect(
+                                 ar[0]+100-25, ar[1]+s/2-5+25,50,50)
+                      */
+
+                    }
+                  }
+                }
+                subShape.pitch = (-targPitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
+                subShape.yaw   = (-targYaw-spinTheta) - shape.yaw
+                subShape.roll += .0025 * (sIdx %2 ? -1 : 1) * shipSteps
+              })
+              shape.rotationMode = 2
+              
+              //shape.yaw = t / 4
+              renderer.Draw(shape)
+            break
+            case 'blackhole disk':
+              shape.shapeData.map((subShape, sIdx) => {
+                subShape.x = blackholes[sIdx].x - subShape.ox
+                subShape.y = blackholes[sIdx].y - subShape.oy
+                subShape.z = blackholes[sIdx].z - subShape.oz
+                subShape.pitch = (-targPitch) * (renderer.cameraMode == 'fps' ? 1 : -1)
+                subShape.yaw   = (-targYaw) - shape.yaw
+                subShape.roll += .001 * (sIdx %2 ? -1 : 1)
+              })
+              shape.rotationMode = 2
+            
+              //shape.yaw = t / 4
+              renderer.Draw(shape)
+            break
+            case 'lines':
+              if(!launched && alive){
+                var colors = shape.shader.datasets[0].optionalAttributes[0].value
+                for(var i = 0; i < shipSteps; i++){
+                  var x1 = ship.x
+                  var y1 = ship.y
+                  var z1 = ship.z
+                  var el = shapes.filter(v=>v.name=='ship')[0]
+                  var vx = ship.vx
+                  var vy = ship.vy
+                  var vz = ship.vz
+                  var ptch = -el.pitch
+                  var yw = el.yaw
+                  var collision = false
+                  for(var j = 0; j < shape.vertices.length; j += 6){
+                    if(j < 6*predictiveLength){
+                      shape.vertices[j+0] = 1e5
+                      shape.vertices[j+1] = 1e5
+                      shape.vertices[j+2] = 1e5
+                      shape.vertices[j+3] = 1e5
+                      shape.vertices[j+4] = 1e5
+                      shape.vertices[j+5] = 1e5
+                      var idx = j
+                      if(!collision){
+                        var ar = BlackholeFunc(x1, y1, z1, vx, vy, vz)
+                        x1 = ar.x1
+                        y1 = ar.y1
+                        z1 = ar.z1
+                        vx = ar.vx
+                        vy = ar.vy
+                        vz = ar.vz
+                        if(ar.collision){
+                          collision = true
+                        }else{
+                          var x2 = x1 + vx
+                          var y2 = y1 + vy
+                          var z2 = z1 + vz
+
+                          x2 = x1 + vx
+                          y2 = y1 + vy
+                          z2 = z1 + vz
+                          shape.vertices[idx+0] = -x1
+                          shape.vertices[idx+1] = y1
+                          shape.vertices[idx+2] = z1
+                          if(((j/12|0)%3)){
+                            shape.vertices[idx+3] = -x2
+                            shape.vertices[idx+4] = y2
+                            shape.vertices[idx+5] = z2
+                          }else{
+                            shape.vertices[idx+3] = -x1
+                            shape.vertices[idx+4] = y1
+                            shape.vertices[idx+5] = z1
+                          }
+                          
+                          x1 = x2
+                          y1 = y2
+                          z1 = z2
+                          
+                          /*
+                          d = Math.hypot(vx, vy, vz)
+                          var rgb = Coordinates.HSVToRGB(d*20,d**2/2,.5+Math.min(.5,d**2/2))
+                          var red = rgb[0] / 256
+                          var green = rgb[1] / 256
+                          var blue = rgb[2] / 256
+                          for(var m = 2*3; m--;){
+                            var idx2 = idx/6*8*3 + m*4
+                            colors[idx2 + 0] = red
+                            colors[idx2 + 1] = green
+                            colors[idx2 + 2] = blue
+                            colors[idx2 + 3] = 1
+                          }
+                          */
+                          for(var m = 2*3; m--;){
+                            var idx2 = idx/6*8*3 + m*4
+                            colors[idx2 + 0] = 1
+                            colors[idx2 + 1] = 1
+                            colors[idx2 + 2] = 1
+                            colors[idx2 + 3] = .33
+                          }
+                        }
+                      }
+                    }else{
+                      idx = j
+                      if(!launched && ranOnce && !holesModified){
+                        var idx2 = 1 + idx/6 - predictiveLength
+                        if(idx2 < flightpath.length){
+                          if(i == 0) {
+                            for(var m = 2*3; m--;){
+                              var idx3 = idx/6*8*3 + m*4
+                              colors[idx3 + 0] = 1
+                              colors[idx3 + 1] = 0
+                              colors[idx3 + 2] = 0
+                              colors[idx3 + 3] = .33
+                            }
+                            var x1 = flightpath[idx2].x1
+                            var y1 = flightpath[idx2].y1
+                            var z1 = flightpath[idx2].z1
+                            var x2 = flightpath[idx2].x2
+                            var y2 = flightpath[idx2].y2
+                            var z2 = flightpath[idx2].z2
+                            shape.vertices[idx+0] = -x1
+                            shape.vertices[idx+1] = y1
+                            shape.vertices[idx+2] = z1
+                            shape.vertices[idx+3] = -x2
+                            shape.vertices[idx+4] = y2
+                            shape.vertices[idx+5] = z2
+                          }
+                        }else{
+                          shape.vertices[idx+0] = 1e5
+                          shape.vertices[idx+1] = 1e5
+                          shape.vertices[idx+2] = 1e5
+                          shape.vertices[idx+3] = 1e5
+                          shape.vertices[idx+4] = 1e5
+                          shape.vertices[idx+5] = 1e5
+                        }
+                      }
+                    }
+                  }
+                }
+                renderer.Draw(shape)
+              }
+            break
+            case 'test shape':
+              renderer.Draw(shape)
+            break
+            case 'axis marker':
+              if(AxisMarkersVisible()){
+                  /*
+                for(var i = 0;
+                     i < shape.vertices.length;
+                     i += shape.stride){
+                  var ls = (t/2%1)*cbSize+1+i/shape.stride*cbSize
+                  for(var j = 0; j < shape.stride; j += 3){
+                    var idx = i + j
+                    shape.vertices[idx+0] = shape.vstate[idx+0] = cbVerts[j + 0] * ls
+                    shape.vertices[idx+1] = shape.vstate[idx+1] = cbVerts[j + 1] * ls
+                    shape.vertices[idx+2] = shape.vstate[idx+2] = cbVerts[j + 2] * ls
+                  }
+                }
+                */
+                if(1)shape.shapeData.map((subShape, sIdx) => {
+                  switch(sIdx){
+                    case 0:
+                      subShape.x = 0
+                      subShape.y = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.y))
+                      subShape.z =  Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.z))
+                    break
+                    case 1:
+                      subShape.x = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.x))
+                      subShape.y = 0
+                      subShape.z = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.z))
+                    break
+                    case 2:
+                      subShape.x = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.x))
+                      subShape.y = Math.min(boundingBoxSize,
+                             Math.max(-boundingBoxSize, cursor.y))
+                      subShape.z = 0
+                    break
+                  }
+                })
+                renderer.Draw(shape)
+              }
+            break
+            case 'test marker':
+              renderer.Draw(shape)
+            break
+            case 'ship':
+              var shipDrag = 1.000001
+              if(alive){
+                var mind = 6e6
+                planets.map((planet, pIdx) => {
+                  x = planet.x
+                  y = planet.y
+                  z = planet.z
+                  d = Math.hypot(x-ship.x, y-ship.y, z-ship.z)
+                  if(d < mind) mind = d
+                  if(d < planet.size*4.25){
+                    SpawnSplosion(ship.x, ship.y, ship.z)
+                    alive = false
+                    engines.pause()
+                    engines.currentTime = 0
+                  }
+                })
+                var mind = 6e6
+                if(alive){
+                  for(var i = 0; i < shipSteps; i++){
+                    if(launched){
+                      if(alive && !levelComplete){
+                        d = Math.hypot(ship.x - targets[0].x,
+                                       ship.y - targets[0].y,
+                                       ship.z - targets[0].z)
+                        if(d < 10){
+                          goal.pause()
+                          goal.currentTime = 0
+                          if(!muted) goal.play()
+                          levelComplete = true
+                          AllSoundsOff()
+                        }
+                        var ar = BlackholeFunc(ship.x, ship.y, ship.z, ship.vx, ship.vy, ship.vz)
+                        ship.x = ar.x1
+                        ship.y = ar.y1
+                        ship.z = ar.z1
+                        ship.vx = ar.vx
+                        ship.vy = ar.vy
+                        ship.vz = ar.vz
+                        if(ar.collision) {
+                          SpawnSplosion(ship.x, ship.y, ship.z)
+                          alive = false
+                          engines.pause()
+                          engines.currentTime = 0
+                        }
+                      }
+                      if(alive && !levelComplete){
+                        var p1 = Math.atan2(ship.vx, ship.vz) + Math.PI
+                        var p2 = -Math.acos(-ship.vy / (Math.hypot(ship.vx, ship.vy, ship.vz)+.00001)) + Math.PI/2
+                        
+                        shape.yaw = p1
+                        shape.pitch = p2
+                        
+                        if(launched){
+                          shape.x = ship.x += ship.vx
+                          shape.y = ship.y += ship.vy
+                          shape.z = ship.z += ship.vz
+                          if(!i) {
+                            flightpath.push({
+                              x1: ship.x,
+                              y1: ship.y,
+                              z1: ship.z,
+                              x2: ship.x + ship.vx,
+                              y2: ship.y + ship.vy,
+                              z2: ship.z + ship.vz,
+                            })
+                            if(flightpath.length > 1){
+                              flightpath[flightpath.length-2].x2=ship.x
+                              flightpath[flightpath.length-2].y2=ship.y
+                              flightpath[flightpath.length-2].z2=ship.z
+                            }
+                          }
+                          while(flightpath.length>iLc-predictiveLength){
+                            flightpath = flightpath.filter((v,i)=>i)
+                          }
+                        }
+                        //ship.vx /= drag
+                        //ship.vy /= drag
+                        //ship.vz /= drag
+                        if(ship.x > boundingBoxSize || ship.x < -boundingBoxSize ||
+                           ship.y > boundingBoxSize || ship.y < -boundingBoxSize ||
+                           ship.z > boundingBoxSize || ship.z < -boundingBoxSize){
+                           alive = false
+                           engines.pause()
+                           engines.currentTime = 0
+                           SpawnSplosion(ship.x, ship.y, ship.z)
+                           renderer.useKeys = false
+                           //shipView = false
+                        }
+                        d = Math.hypot(ship.vx, ship.vy, ship.vz)
+                        if(alive && d > .01 && !levelComplete){
+                          x = ship.vx / d * 3
+                          y = ship.vy / d * 3
+                          z = ship.vz / d * 3
+                          var p1 = Math.atan2(x, z)
+                          var p2 = -Math.acos(y / (Math.hypot(x,y,z)+.00001))-Math.PI/2
+                          for(var n=0; n<4; n++){
+                            var x1 = S(p=Math.PI*2/2*n+Math.PI/2+shape.roll) * 8
+                            var y1 = C(p) * 8
+                            var z1 = -4
+                            p = Math.atan2(y1,z1) + p2
+                            d = Math.hypot(y1,z1)
+                            y1 = S(p) * d
+                            z1 = C(p) * d
+                            p = Math.atan2(x1,z1) + p1
+                            d = Math.hypot(x1,z1)
+                            x1 = S(p) * d
+                            z1 = C(p) * d
+                            if(ship.hasThrusters) SpawnSmoke(
+                               x1 + ship.x - ship.vx/4*n - x,
+                               y1 + ship.y - ship.vy/4*n - y,
+                               z1 + ship.z - ship.vz/4*n - z )
+                          }
+                        }
+                        if(shipView){
+                          var shipCamDist = 100
+                          var shipCamTracking = 12
+                          var vecx = 0
+                          var vecy = 0
+                          var vecz = shipCamDist
+                          ship.vecPitch += shape.pitch - (ship.vecPitch) / shipCamTracking
+                          p = Math.atan2(vecy, vecz) + shape.pitch + .5
+                          d = Math.hypot(vecy, vecz)
+                          vecy = S(p) * d
+                          vecz = C(p) * d
+                          ship.vecYaw += shape.yaw - (ship.vecYaw) / shipCamTracking
+                          p = Math.atan2(vecx, vecz) + shape.yaw
+                          d = Math.hypot(vecx, vecz)
+                          vecx = S(p) * d
+                          vecz = C(p) * d
+                          ship.vecx += (vecx - ship.vecx) / shipCamTracking
+                          ship.vecy += (vecy - ship.vecy) / shipCamTracking
+                          ship.vecz += (vecz - ship.vecz) / shipCamTracking
+                          targX = -ship.x - ship.vecx
+                          targY = -ship.y - ship.vecy + 40
+                          targZ = -ship.z - ship.vecz
+                          targYaw = -shape.yaw + Math.PI
+                          targPitch = shape.pitch
+                        }
+                      }
+                    }
+                  }
+                }
+                if(!levelComplete) shape.roll += .02 * (launched ? (.025 + Math.hypot(ship.vx,ship.vy,ship.vz))*12 : 0)
+                renderer.Draw(shape)
+              }
+            break
+            case 'target':
+              if(0){
+                shape.shapeData.map((subShape, sIdx) => {
+                  if(sIdx < targets.length){
+                    subShape.x = targets[sIdx].x - subShape.ox
+                    subShape.y = targets[sIdx].y - subShape.oy
+                    subShape.z = targets[sIdx].z - subShape.oz
+                  }else{
+                    subShape.x = 1e5
+                    subShape.y = 1e5
+                    subShape.z = 1e5
+                  }
+                })
+              }else{
+                shape.x = targets[0].x
+                shape.y = targets[0].y
+                shape.z = targets[0].z
+              }
+              renderer.Draw(shape)
+            break
+            case 'cube grid':
+              if(showCubeGrid){
+                //if(!shipView) renderer.Draw(shape)
+                renderer.Draw(shape)
+              }
+            break
+            case 'cursor':
+              //if(!launched && alive) renderer.Draw(shape)
+            break
+            case 'main':
+              renderer.Draw(shape)
+            break
+            default:
+              //renderer.Draw(shape)
+            break
+          }
+        })
+        
+        
+        //// obstacles ////
+        obstacles.map((obstacle, oIdx) => {
+          if(oIdx == levelObstacleIdx){
+            var shape = obstacle.data.shape
+            switch(levelObstacleIdx){
+              default:
+              break
+            }
+            var collision = false
+            var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t*1.75))*Math.PI*1.25))
+            for(var j = 0; j < shape.shapeData.length; j++){
+              var ox = shape.shapeData[j].ox
+              var oy = shape.shapeData[j].oy
+              var oz = shape.shapeData[j].oz
+              for(var i = 0; i < baseObstacleVerts.length; i+=3){
+                x = baseObstacleVerts[i+0]
+                y = baseObstacleVerts[i+1]
+                z = baseObstacleVerts[i+2]
+                p = Math.atan2(y,z) //+ t
+                d = Math.hypot(y,z)
+                y = S(p) * d
+                z = C(p) * d
+                p = Math.atan2(x, y) + tht
+                d = Math.hypot(x, y)
+                x = S(p) * d
+                y = C(p) * d
+                shape.vertices[i+j*shape.stride+0]=x+ox
+                shape.vertices[i+j*shape.stride+1]=y+oy
+                shape.vertices[i+j*shape.stride+2]=z+oz
+
+                x = baseObstacleNormalVecs[i+0]
+                y = baseObstacleNormalVecs[i+1]
+                z = baseObstacleNormalVecs[i+2]
+                p = Math.atan2(y,z) //+ t
+                d = Math.hypot(y,z)
+                y = S(p) * d
+                z = C(p) * d
+                p = Math.atan2(x, y) + tht
+                d = Math.hypot(x, y)
+                x = S(p) * d
+                y = C(p) * d
+                shape.normalVecs[i+j*shape.stride+0]=x
+                shape.normalVecs[i+j*shape.stride+1]=y
+                shape.normalVecs[i+j*shape.stride+2]=z
+              }
+              for(var i = 0; i < baseObstacleVerts.length; i+=9){
+                var idx = i + j * shape.stride
+                var x1 = shape.vertices[idx+0]
+                var y1 = shape.vertices[idx+1]
+                var z1 = shape.vertices[idx+2]
+                p = Math.atan2(y1,z1) + shape.pitch
+                d = Math.hypot(y1,z1)
+                y1 = S(p) * d
+                z1 = C(p) * d
+                p = Math.atan2(x1, z1) + shape.yaw
+                d = Math.hypot(x1, z1)
+                x1 = S(p) * d
+                z1 = C(p) * d
+
+                var x2 = shape.vertices[idx+3]
+                var y2 = shape.vertices[idx+4]
+                var z2 = shape.vertices[idx+5]
+                p = Math.atan2(y2,z2) + shape.pitch
+                d = Math.hypot(y2,z2)
+                y2 = S(p) * d
+                z2 = C(p) * d
+                p = Math.atan2(x2, z2) + shape.yaw
+                d = Math.hypot(x2, z2)
+                x2 = S(p) * d
+                z2 = C(p) * d
+
+                var x3 = shape.vertices[idx+6]
+                var y3 = shape.vertices[idx+7]
+                var z3 = shape.vertices[idx+8]
+                p = Math.atan2(y3,z3) + shape.pitch
+                d = Math.hypot(y3,z3)
+                y3 = S(p) * d
+                z3 = C(p) * d
+                p = Math.atan2(x3, z3) + shape.yaw
+                d = Math.hypot(x3, z3)
+                x3 = S(p) * d
+                z3 = C(p) * d
+                
+                var ax = (x1+x2+x3) / 3
+                var ay = (y1+y2+y3) / 3
+                var az = (z1+z2+z3) / 3
+                if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z))<50){
+                  var poly = [
+                    [x1,y1,z1],
+                    [x2,y2,z2],
+                    [x3,y3,z3],
+                  ]
+                  var ar
+                  if(ar=Coordinates.PointInPoly3D(ship.x,
+                                          ship.y,
+                                          ship.z,
+                                          ship.x+ship.vx*5+.1,
+                                          ship.y+ship.vy*5-.1,
+                                          ship.z+ship.vz*5,
+                                          poly)){
+                    collision = true
+                  }
+                }
+              }
+            }
+            if(collision && alive && launched){
+              SpawnSplosion(ship.x, ship.y, ship.z)
+              alive = false
+              engines.pause()
+              engines.currentTime = 0
+            }
+            shape.pitch = t/10
+            shape.yaw = C(t)/4
+            renderer.Draw(shape)
+          }
+        })
+        
+        
+        //// mazes ////
+        mazes.map((maze, mIdx) => {
+          if(mIdx == levelMazeIdx){
+            var shape = maze.data.shape
+            var baseMazeVerts = maze.data.baseMazeVerts
+            var baseMazeNormalVecs = maze.data.baseMazeNormalVecs
+            var collision = false
+            var tht = Math.min(Math.PI/2, Math.max(0, (.3+C(t))*Math.PI))
+            var ds = shape.shader.datasets.filter(v=>v.iURL==shape.map)[0]
+            var ol = ds.optionalLighting
+            var oa = ds.optionalUniforms
+            var phong = oa.filter(v=>v.name=='phong')[0]
+            var reflection = oa.filter(v=>v.name=='reflection')[0]
+            var refraction2 = oa.filter(v=>v.name=='refraction2')[0]
+            var lighting = ol.filter(v=>v.name=='ambientLight')[0]
+            switch(levelMazeIdx){
+              case 2:
+                phong.value = .25
+                reflection.value = .1
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .33
+                shape.yaw = -t
+              break
+              case 3:
+                phong.value = .05
+                reflection.value = .2
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .5
+                shape.alpha = .9
+                shape.disableDepthTest = true
+                shape.roll = S(t/2)/32
+                shape.yaw   = C(t/2)/32
+              break
+              case 4:
+                phong.value = .05
+                reflection.value = .2
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .5
+                shape.alpha = .9
+                shape.disableDepthTest = true
+                shape.roll = S(t/2)/32
+                shape.yaw   = C(t/2)/32
+              break
+              default:
+                shape.pitch = S(t/3)/8
+                shape.yaw = C(t/3)/8
+              break
+            }
+            for(var j = 0; j < shape.shapeData.length; j++){
+              var ox = shape.shapeData[j].ox
+              var oy = shape.shapeData[j].oy
+              var oz = shape.shapeData[j].oz
+              if(0) for(var i = 0; i < baseMazeVerts.length; i+=3){
+                x = baseMazeVerts[i+0]
+                y = baseMazeVerts[i+1]
+                z = baseMazeVerts[i+2]
+                p = Math.atan2(y,z) //+ t
+                d = Math.hypot(y,z)
+                y = S(p) * d
+                z = C(p) * d
+                p = Math.atan2(x, y) + tht
+                d = Math.hypot(x, y)
+                x = S(p) * d
+                y = C(p) * d
+                shape.vertices[i+j*shape.stride+0]=x+ox
+                shape.vertices[i+j*shape.stride+1]=y+oy
+                shape.vertices[i+j*shape.stride+2]=z+oz
+
+                x = baseMazeNormalVecs[i+0]
+                y = baseMazeNormalVecs[i+1]
+                z = baseMazeNormalVecs[i+2]
+                p = Math.atan2(y,z) //+ t
+                d = Math.hypot(y,z)
+                y = S(p) * d
+                z = C(p) * d
+                p = Math.atan2(x, y) + tht
+                d = Math.hypot(x, y)
+                x = S(p) * d
+                y = C(p) * d
+                shape.normalVecs[i+j*shape.stride+0]=x
+                shape.normalVecs[i+j*shape.stride+1]=y
+                shape.normalVecs[i+j*shape.stride+2]=z
+              }
+              for(var i = 0; i < baseMazeVerts.length; i+=9){
+                var idx = i + j * shape.stride
+                var x1 = shape.vertices[idx+0]
+                var y1 = shape.vertices[idx+1]
+                var z1 = shape.vertices[idx+2]
+                p = Math.atan2(y1,z1) + shape.pitch
+                d = Math.hypot(y1,z1)
+                y1 = S(p) * d
+                z1 = C(p) * d
+                p = Math.atan2(x1, z1) + shape.yaw
+                d = Math.hypot(x1, z1)
+                x1 = S(p) * d
+                z1 = C(p) * d
+
+                var x2 = shape.vertices[idx+3]
+                var y2 = shape.vertices[idx+4]
+                var z2 = shape.vertices[idx+5]
+                p = Math.atan2(y2,z2) + shape.pitch
+                d = Math.hypot(y2,z2)
+                y2 = S(p) * d
+                z2 = C(p) * d
+                p = Math.atan2(x2, z2) + shape.yaw
+                d = Math.hypot(x2, z2)
+                x2 = S(p) * d
+                z2 = C(p) * d
+
+                var x3 = shape.vertices[idx+6]
+                var y3 = shape.vertices[idx+7]
+                var z3 = shape.vertices[idx+8]
+                p = Math.atan2(y3,z3) + shape.pitch
+                d = Math.hypot(y3,z3)
+                y3 = S(p) * d
+                z3 = C(p) * d
+                p = Math.atan2(x3, z3) + shape.yaw
+                d = Math.hypot(x3, z3)
+                x3 = S(p) * d
+                z3 = C(p) * d
+                
+                var ax = (x1+x2+x3) / 3
+                var ay = (y1+y2+y3) / 3
+                var az = (z1+z2+z3) / 3
+                if((d=Math.hypot(ax-ship.x,ay-ship.y,az-ship.z)) < 20){
+                  var poly = [
+                    [x1,y1,z1],
+                    [x2,y2,z2],
+                    [x3,y3,z3],
+                  ]
+                  var ar
+                  if(ar=Coordinates.PointInPoly3D(ship.x,
+                                          ship.y,
+                                          ship.z,
+                                          ship.x+ship.vx*5,
+                                          ship.y+ship.vy*5,
+                                          ship.z+ship.vz*5,
+                                          poly)){
+                    collision = true
+                  }
+                }
+              }
+            }
+            if(collision && alive && launched){
+              SpawnSplosion(ship.x, ship.y, ship.z)
+              alive = false
+              engines.pause()
+              engines.currentTime = 0
+            }
+            renderer.Draw(shape)
+          }
+        })
+      
+        ///////////////
+        
+        if(alive && !launched){
+          var buttonHover = !!blackholes.filter(v=>v.buttonHover).length
+          if(!buttonHover){
+            document.querySelectorAll('canvas').forEach(el => {
+              el.style.cursor = 'crosshair'
+            })
+          }
+          var hoverTrigger = false
+          blackholes.map((v, i) => {
+            if(v.x != 1e5){
+              x = v.x
+              y = v.y
+              z = v.z
+              var ar = Coordinates.GetShaderCoord(x,y,z,{
+                x:0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0,
+              }, renderer)
+              if(ar){
+                var bx = ar[0]
+                var by = ar[1]
+                var bz = ar[2]
+                var s = 140 * v.mass
+                var n = 1+v.mass/140
+                if(!hoverTrigger &&
+                  (d=Math.hypot(x=bx-mx, y=by-my)) < s/bz ||
+                    (v.hover && -y < 80*n && -y > -90*n &&
+                    x > -140 && x < 140)){
+                  if(!v.button) v.buttonTimer = t + buttonTimerInterval
+                  if(renderer.mouseButton == 1) v.button = true
+                  hoverTrigger = v.hover = true
+                  if(renderer.cameraMode == 'fps') renderer.useKeys = false
+                  if(!buttonHover)
+                    document.querySelectorAll('canvas').forEach(el => {
+                      el.style.cursor = 'move'
+                    })
+                }else{
+                  if(!v.dragging) {
+                    v.hover = false
+                    if(renderer.cameraMode == 'fps') renderer.useKeys = true
+                  }
+                }
+              }
+            }
+          })
+          if(blackholes.filter(v=>v.hover).length > 1){
+            var first = false
+            blackholes.map(v=>{
+              if(v.hover){
+                if(first) v.hover = false
+                first = true
+              }
+            })
+          }
+        }
+        
+        if(misplaced.timer > t){
+          misplacedShape.x = misplaced.x
+          misplacedShape.y = misplaced.y
+          misplacedShape.z = misplaced.z
+          var diff = (misplaced.timer - t) * 2
+          for(var i = 0; i < misplacedVerts.length; i+=3){
+            misplacedShape.vertices[i+0] = misplacedVerts[i+0] * (2-diff)
+            misplacedShape.vertices[i+1] = misplacedVerts[i+1] * (2-diff)
+            misplacedShape.vertices[i+2] = misplacedVerts[i+2] * (2-diff)
+          }
+          misplacedShape.alpha = diff/2
+          renderer.Draw(misplacedShape)
+        }
+       
+        //renderer.Draw(tempCube)
+      }
+      
+      window.cancelLoadingText = true
+      
+    </script>
+  </body>
+</html>
