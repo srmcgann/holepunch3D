@@ -153,7 +153,7 @@
       .checked{
         background-repeat: no-repeat;
         background-position: center center;
-        background-size: 26px 26px;
+        background-size: 24px 24px;
         background-color: #840;
         background-image: url(checkmark.png);
         background-color: #222;
@@ -1173,9 +1173,9 @@
         color: 0x4400ff,
         colorMix: 0,
         
-        scaleX: 90,
-        scaleY: 90,
-        scaleZ: 90,
+        scaleX: 120,
+        scaleY: 100,
+        scaleZ: 100,
         playbackSpeed: 1,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -2093,10 +2093,11 @@
       var cameras, predictiveLength, shipSteps
       var muted, history, historyPointer, historyTop
       var levelComplete, buttonTimerInterval
-      var hasThrusters, corkscrew
+      var hasThrusters, corkscrew, endOfGame
       
       const Init = () => {
         level = 1
+        endOfGame = false
         corkscrew = false
         level = Math.max(1,level)
         flightpath = []
@@ -3324,43 +3325,50 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 `
 
           break
+          default:
+            endOfGame = true
+          break
           
         }
-        if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
-          RestoreCam()
-        }
-        
-        ship = {
-          x: initShipX,
-          y: initShipY,
-          z: initShipZ,
-          vx: initShipVx,
-          vy: initShipVy,
-          vz: initShipVz,
-          ovx: initShipVx,
-          ovy: initShipVy,
-          ovz: initShipVz,
-          hasThrusters,
-          vecx: 0,
-          vecy: 0,
-          vecz: 0,
-          vecRoll: 0,
-          vecPitch: -Math.acos(-initShipVy /
-                          (Math.hypot(initShipVx,
-                           initShipVy,
-                           initShipVz))+.0001) + Math.PI/2,
-          vecYaw: Math.atan2(initShipVx, initShipVz)+Math.PI,
-        }
+        if(endOfGame){
+          levelNameEl.innerHTML = 'MISSIONS COMPLETE!'
+        }else{
+          if(initBlackHoles || renderer.cameraMode == 'default' || shipView){
+            RestoreCam()
+          }
+          
+          ship = {
+            x: initShipX,
+            y: initShipY,
+            z: initShipZ,
+            vx: initShipVx,
+            vy: initShipVy,
+            vz: initShipVz,
+            ovx: initShipVx,
+            ovy: initShipVy,
+            ovz: initShipVz,
+            hasThrusters,
+            vecx: 0,
+            vecy: 0,
+            vecz: 0,
+            vecRoll: 0,
+            vecPitch: -Math.acos(-initShipVy /
+                            (Math.hypot(initShipVx,
+                             initShipVy,
+                             initShipVz))+.0001) + Math.PI/2,
+            vecYaw: Math.atan2(initShipVx, initShipVz)+Math.PI,
+          }
 
-        var shipShape = shapes.filter(v=>v.name=='ship')[0]
-        shipShape.x = ship.x
-        shipShape.y = ship.y
-        shipShape.z = ship.z
-        shipShape.yaw = ship.vecYaw
-        shipShape.pitch = ship.vecPitch
-        shipShape.roll = ship.vecRoll
-        
-        levelNameEl.innerHTML = levelName
+          var shipShape = shapes.filter(v=>v.name=='ship')[0]
+          shipShape.x = ship.x
+          shipShape.y = ship.y
+          shipShape.z = ship.z
+          shipShape.yaw = ship.vecYaw
+          shipShape.pitch = ship.vecPitch
+          shipShape.roll = ship.vecRoll
+          
+          levelNameEl.innerHTML = levelName
+        }
       }
       LoadLevel(true)
       
@@ -4282,7 +4290,7 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                   }
                 })
                 var mind = 6e6
-                if(alive){
+                if(alive && !endOfGame){
                   for(var i = 0; i < shipSteps; i++){
                     if(launched){
                       if(alive && !levelComplete){
@@ -4627,6 +4635,15 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
             var refraction2 = oa.filter(v=>v.name=='refraction2')[0]
             var lighting = ol.filter(v=>v.name=='ambientLight')[0]
             switch(levelMazeIdx){
+              case 1:
+                phong.value = .25
+                reflection.value = .1
+                refraction2.value = .75
+                refraction2.angleOfRefraction = -.25
+                lighting.value = .33
+                shape.colorMix = .2
+                //shape.yaw = -t
+              break
               case 2:
                 phong.value = .25
                 reflection.value = .1
