@@ -933,7 +933,7 @@
         return { x: 0, y: 0, z: 0, size: 4, data: {}}
       })
       
-      var iObstaclec = 5
+      var iObstaclec = 20
       var obstacles = Array(iObstaclec).fill().map(v => {
         return { x: 0, y: 0, z: 0, size: 4, data: {}}
       })
@@ -1130,9 +1130,9 @@
         color: 0x4400ff,
         colorMix: 0,
         
-        scaleX: 33,
-        scaleY: 33,
-        scaleZ: 33,
+        scaleX: 28,
+        scaleY: 40,
+        scaleZ: 40,
         playbackSpeed: 1,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
@@ -1191,8 +1191,52 @@
         })
       })
       
-      var baseObstacleVerts
-      var baseObstacleNormalVecs
+      var baseMazeVerts
+      var baseMazeNormalVecs
+      var cl = 1
+      var rw = 1
+      var br = 1
+      var sp = 72
+      var pointArray = []
+      Array(br*cl*rw).fill().map((v, i) => {
+        x = ((i%cl)-cl/2+.5)*sp
+        y = (((i/cl|0)%rw)-rw/2+.5)*sp
+        z = ((i/cl/rw|0)-br/2+.5)*sp *1
+        if(Math.hypot(x,y,z) < sp*2) pointArray.push([x,y,z])
+      })
+      var geoOptions = {
+        shapeType: 'obj',
+        name: 'maze',
+        url: 'https://srmcgann.github.io/holepunch3D/level11.obj',
+        map: 'https://srmcgann.github.io/holepunch3D/level11.png',
+        //subs: 0,
+        //averageNormals: false,
+        scaleX: 100,
+        scaleY: 100,
+        scaleZ: 100,
+        //disableDepthTest: true,
+        //alpha: .9,
+        sphereize: 0,
+        //equirectangular: true,
+        playbackSpeed: 1,
+        color: 0x00ff44,
+        colorMix: 0,
+      }
+      await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
+        Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
+          mazes[5].data = {
+            shape: res,
+            baseMazeVerts,
+            baseMazeNormalVecs,
+          }
+          await mazeShader.ConnectGeometry(res)
+        })
+      })
+
+      var baseMazeVerts
+      var baseMazeNormalVecs
       var cl = 3
       var rw = 4
       var br = 4
@@ -1206,7 +1250,7 @@
       })
       var geoOptions = {
         shapeType: 'cube',
-        name: 'obstacle',
+        name: 'maze',
         //map: 'https://srmcgann.github.io/Coordinates/resources/nebugrid_po2.jpg',
         //url: 'https://srmcgann.github.io/holepunch3D/torus_knot_lowpoly.obj',
         //size: 110,
@@ -1224,15 +1268,15 @@
         colorMix: .25,
       }
       await Coordinates.LoadGeometry(renderer, geoOptions).then(async (geometry) => {
-        baseObstacleVerts = structuredClone(geometry.vertices)
-        baseObstacleNormalVecs = structuredClone(geometry.normalVecs)
+        baseMazeVerts = structuredClone(geometry.vertices)
+        baseMazeNormalVecs = structuredClone(geometry.normalVecs)
         Coordinates.ShapeFromArray(geometry, pointArray).then(async res => {
-          obstacles[0].data = {
+          mazes[0].data = {
             shape: res,
-            baseObstacleVerts,
-            baseObstacleNormalVecs,
+            baseMazeVerts,
+            baseMazeNormalVecs,
           }
-          await obstacleShader.ConnectGeometry(res)
+          await mazeShader.ConnectGeometry(res)
         })
       })
 
@@ -3325,6 +3369,59 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
 `
 
           break
+//////////////////////////////
+//         LEVEL 11         //
+//////////////////////////////
+          case 11:
+            levelName = `${level} - FLY CAREFULLY!`
+            stage = 0
+            SpawnTarget(200, 0, 0)
+            
+            planets = []
+            levelMazeIdx = 5
+            levelObstacleIdx = -1
+            
+            initShipX = -200
+            initShipY = 0
+            initShipZ = 0
+            //massAvailable = 100
+            launched = false
+            //SetRefTexture('https://skyboxes2.verymad.net/images/stars.jpg',1)
+            
+            showBackground = false
+            showCubeGrid = true
+            initShipVx = 1 
+            initShipVy = 0
+            initShipVz = 0
+            hasThrusters = Math.hypot(initShipVx,initShipVy,initShipVz)>.001
+
+            objectiveText = 
+`
+<img
+ src="${hp3dLogo}"
+ class="logo"
+ style=""
+/> 
+  
+<span
+  style="color: #f0f; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>LEVEL ${level}</span><!--              <span
+  style="color: #f00; font-size: 1.25em;transform: scale(2.0, 1.0);display: inline-block;"
+>OBJECTIVE</span>-->
+
+
+
+<span
+  style="color: #0f4; font-size: 1.5em;">NAVIGATE THROUGH THE MAZE
+
+<!--<img
+           src="https://srmcgann.github.io/holepunch3D/maze_example2.png"
+           class="objImg"
+           style="width:443px;margin-top:-15px;"
+          />--></span>
+`
+
+          break
           default:
             endOfGame = true
           break
@@ -4673,6 +4770,17 @@ USE THE ARROW KEYS TO ROTATE THE VIEW
                 shape.disableDepthTest = true
                 shape.roll = S(t/2)/32
                 shape.yaw   = C(t/2)/32
+              break
+              case 5:
+                phong.value = .05
+                reflection.value = .1
+                refraction2.value = .5
+                refraction2.angleOfRefraction = -1
+                lighting.value = .1
+                shape.alpha = .9
+                shape.disableDepthTest = true
+                shape.colorMix = 0
+                shape.pitch = t/8
               break
               default:
                 shape.pitch = S(t/3)/8
